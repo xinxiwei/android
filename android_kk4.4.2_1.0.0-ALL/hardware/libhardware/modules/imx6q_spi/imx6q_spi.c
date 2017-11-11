@@ -372,12 +372,10 @@ void stop_fpga_dma()//停止FPGA采集, DMA搬运，关闭设备文件
     }else{
         LOGD( "stop_fpga_dma: DMA采集-停止成功 ,fd = %d",fd ); 
     }
-    
 	swrite( StopSampleAddr , StopSampleData );//stop fpga		
 	LOGD("xin: 停止FPGA采集");	
-
 	
-	if(  power_off_flag == 1) // 下电标识
+	if( power_off_flag == 1) // 下电标识
 	{	
         spi_power_off(); 
 		restart_power_on_flag = 0;	// 下次采集重新上电标识 0表示后面采集要重新上电
@@ -452,7 +450,7 @@ static int stop_vibrate_sample( struct spictl_device_t* dev )//停止振动采�
 ///////////////////压力采集功能如下
 void read_press_data( int signo ) // 读取压力adc 采样数据
 {	
-    //LOGD( "xin: 读取压力数据  [%s]\n" ,  log_time( ) );
+    //LOGD( "xin: 读取压力数据时stop_smp_flag = %d,g_loop_num = %d, g_smpLength = %d , power_off_flag =%d  , [%s]\n" ,  stop_smp_flag, g_loop_num, g_smpLength , power_off_flag , log_time( ) );
     if(power_off_flag == 1) 
 	{	
 		LOGD("xin: 读取压力数据时，检测到下电标识，不再读取数据提前stop fpaga DMA,post信号量");
@@ -525,7 +523,6 @@ void *press_flag0_thread( void* arg ) //压力标0模式
 	
 	sem_wait( &run_sem );//等待信号量	
 	f64_sum = 0.0;	
-	
     
 	for( i=0;i<SIZE_16K;i++ )
 	{		        
@@ -536,7 +533,13 @@ void *press_flag0_thread( void* arg ) //压力标0模式
 	
 	LOGD( "xin: 计算出压力标0值 =%f" , press_flag0_value[0] );			
 	
-    ioctl( fd ,  SPIDEV_IOC_RXSTREAMOFF ,  NULL ); //停止DMA搬运
+    int res = ioctl( fd ,  SPIDEV_IOC_RXSTREAMOFF ,  NULL ); //停止DMA搬运
+    if( res !=0 ) //启动DMA采集失败时，重新启动
+	{		
+        LOGD( "压力标0: DMA采集-停止失败 ,fd = %d",fd ); 
+    }else{
+        LOGD( "压力标0: DMA采集-停止成功 ,fd = %d",fd ); 
+    }
     swrite( StopSampleAddr , StopSampleData );//停止FPGA采集
 	
 	close( fd ); //关闭设备文件 		
@@ -565,7 +568,7 @@ void *press_curve_thread( void* arg ) //压力曲线模式
 	
 	if(power_off_flag == 1)
 	{
-		//LOGD("xin: recived post ");
+		LOGD("xin: recived post ");
 		goto  stop_daq;
 	}
 	memset( final_buf , 0 , SIZE_16K*sizeof( float ) );
@@ -626,9 +629,8 @@ void *press_curve_thread( void* arg ) //压力曲线模式
             LOGD("xin: 退出压力曲线线程  [%s]\n" ,  log_time( ) );			
 		    return NULL;
 		}else{
-			//LOGD("xin: 压力曲线线程正常回调数据");
 			pressure_callback_backup.mspictl_callback( ret_value ,  true );//调用JNI 回调方法，向上层传送数据
-			LOGD("xin: 压力曲线数据回调完成 [%s]\n" ,  log_time( ) );
+			LOGD("xin: 压力曲线数据正常回调数据完成 [%s]\n" ,  log_time( ) );
 		}	
 		can_start_flag = 1;			
 		sem_destroy( &run_sem );
@@ -732,9 +734,8 @@ void *press_dial_thread( void* arg ) //压力表盘模式
             LOGD("xin: 退出压力表盘线程  [%s]\n" ,  log_time( ) );			
 		    return NULL;
 		}else{
-			//LOGD("xin: 压力表盘线程正常回调数据");
 			pressure_callback_backup.mspictl_callback( dial_value ,  true );//调用JNI 回调方法，向上层传送数据	
-		    LOGD("xin: 压力表盘数据回调完成 [%s]\n" ,  log_time( ) );
+		    LOGD("xin: 压力表盘数据正常回调数据完成 [%s]\n" ,  log_time( ) );
 		}
 		can_start_flag = 1;			
 		sem_destroy( &run_sem );
@@ -757,22 +758,18 @@ void *press_dial_thread( void* arg ) //压力表盘模式
  
 static int start_pressure_flag0( struct spictl_device_t* dev )// 压力标0模式
 {	 
-   //LOGD("xin: 响应压力标0点击开始******************** [%s]\n" ,  log_time( ));  
-   LOGD("xin: start_pressure_flag0_start_num = %d",start_num);
+   LOGD("xin: 点击压力标0开始时start_num = %d",start_num);
    if(start_num != 0)
    {
 	  return 0; 
    }   
     memset(read_60K_buf,0,SIZE_60K*sizeof(unsigned char));
     memset(press_buf ,0, SIZE_64K*sizeof(unsigned char)); 
-	int reg_ret_value =0;
     g_loop_num = 0;
-	   
-    poweron_spi(  );	
-		
-    reg_ret_value = set_press_reg( smp_rate );	//设置压力采集寄存器 
-	usleep(2000000); //用于上层时域波形不丢波形数据，在这里直接延时2S,让硬 件预热稳定
-
+	press_flag0_flag = 1;  //只针对标0时，此时置为1
+        
+    poweron_spi(  );			
+    int reg_ret_value = set_press_reg( smp_rate );	//设置压力采集寄存器 
 	if( reg_ret_value == -1)
 	{	
         LOGD("xin: 寄存器配置失败");
@@ -781,9 +778,10 @@ static int start_pressure_flag0( struct spictl_device_t* dev )// 压力标0模�
 		spi_power_off(  );			
 		return 0;
 	}
-	
+    
+	usleep(2000000); //用于上层时域波形不丢波形数据，在这里直接延时2S,让硬 件预热稳定
 	start_num ++;
-	press_flag0_flag = 1;  //只针对标0时，此时置为1
+	
 	sem_init( &run_sem ,  0 ,  0 );	
 	
 	pthread_create( &c_id ,  NULL ,  press_flag0_thread ,  NULL );
@@ -795,18 +793,19 @@ static int start_pressure_flag0( struct spictl_device_t* dev )// 压力标0模�
  
 static int start_pressure_curve( struct spictl_device_t* dev , float flag0_value )  //压力曲线模式
 {	 
-   LOGD("xin: start_pressure_curve_start_num = %d",start_num);
+   LOGD("xin: 点击压力曲线开始时start_num = %d",start_num);
    if(start_num != 0)
    {
 	  return 0; 
    } 
     memset(read_60K_buf,0,SIZE_60K*sizeof(unsigned char)); 
     memset(press_buf ,0, SIZE_64K*sizeof(unsigned char)); 	
-	int reg_ret_value =0;
     g_loop_num = 0;
-	
-	//LOGD("\nxin: 点击曲线开始时 start_enable_flag = %d, restart_power_on_flag= %d, can_start_flag = %d , thread_finished_flag = %d",	    start_enable_flag,restart_power_on_flag,can_start_flag,thread_finished_flag);
-		
+	stop_smp_flag = 0;
+    pflag0_value = flag0_value;	
+
+	//LOGD("xin: 点击压力曲线开始时******************** [%s]\n" ,  log_time( ));
+	LOGD("\nxin: 点击压力曲线开始时start_enable_flag = %d, restart_power_on_flag= %d, can_start_flag = %d , thread_finished_flag = %d",start_enable_flag,restart_power_on_flag,can_start_flag,thread_finished_flag);
 		
 	if(start_enable_flag == 1) // 1表示前一个start 线程还没有结束，此时不再响应新的start， 为0时表示start线程结束了
 	{
@@ -815,18 +814,18 @@ static int start_pressure_curve( struct spictl_device_t* dev , float flag0_value
 	}else{
 	    start_enable_flag = 1;
 	}	
-	
-	
-	//LOGD("xin: 响应压力曲线点击开始******************** [%s]\n" ,  log_time( )); 
+	if (can_start_flag == 1)
+	{
+	    return 0;  		
+	}
+    
+	 
     if(restart_power_on_flag == 1) // 当内部stop DMA，fpga,关闭设备后，flag 置1， 当再启动start接口时不再重新上电，当对外大的停止采集下电后，此flag会置为 0，重新采集时再上电
 	{
 		;
 	}else{
 		poweron_spi(  );		
-		
-		reg_ret_value = set_press_reg( smp_rate );	//配置压力采集寄存器 
-		usleep(2000000); //用于上层时域波形不丢波形数据，在这里直接延时2S,让硬 件预热稳定
-		
+		int reg_ret_value = set_press_reg( smp_rate );	//配置压力采集寄存器 
 		if( reg_ret_value == -1)
 		{	
             LOGD("xin: 寄存器配置失败");	
@@ -836,19 +835,9 @@ static int start_pressure_curve( struct spictl_device_t* dev , float flag0_value
 			return 0;
 		}
 	}
-	
-	if (can_start_flag == 1)
-	{
-	    return 0;  		
-	}
-	
+    usleep(2000000); //用于上层时域波形不丢波形数据，在这里直接延时2S,让硬 件预热稳定
 	start_num ++;
-    usleep(100000);//用于stop 和start DMA,寄存器稳定
 	sem_init( &run_sem ,  0 ,  0 );   //初始化信号量
-	
-	pflag0_value = flag0_value;	
-
-	stop_smp_flag = 0;
 	
 	pthread_create( &c_id ,  NULL ,  press_curve_thread ,  NULL );
     signal( SIGIO ,  read_press_data );	
@@ -862,8 +851,7 @@ static int start_pressure_curve( struct spictl_device_t* dev , float flag0_value
 	power_off_flag = 0;
 	start_enable_flag = 0;
 	
-	//restart_power_on_flag = 0;
-	LOGD( "xin: 响应压力曲线点击结束***** [%s]\n" ,  log_time( ) ); 	
+	LOGD( "xin: 点击压力曲线结束***** [%s]\n" ,  log_time( ) ); 	
 	usleep( 100000 ); //用于底层虚拟地址和物理地址映射出错	
 	
 	return 0;	
@@ -871,17 +859,19 @@ static int start_pressure_curve( struct spictl_device_t* dev , float flag0_value
 
 static int start_pressure_dial( struct spictl_device_t* dev , float flag0_value )// 压力表盘模式
 {	
-   LOGD("xin: start_pressure_dial_start_num = %d",start_num);
+   LOGD("xin: 点击压力表盘开始时start_num = %d",start_num);
    if(start_num != 0)
    {
 	  return 0; 
    } 
     memset(read_60K_buf,0,SIZE_60K*sizeof(unsigned char));   
     memset(press_buf ,0, SIZE_64K*sizeof(unsigned char)); 	
-	int reg_ret_value =0;
     g_loop_num = 0;
+	stop_smp_flag = 0;
+    pflag0_value = flag0_value;
 	
-	//LOGD("\nxin: 点击表盘开始时 start_enable_flag = %d, restart_power_on_flag= %d, can_start_flag = %d , thread_finished_flag = %d",	    start_enable_flag,restart_power_on_flag,can_start_flag,thread_finished_flag);
+    //LOGD("xin: 点击压力表盘开始时 [%s]\n" ,  log_time( )); 
+	LOGD("\nxin: 点击表盘开始时 start_enable_flag = %d, restart_power_on_flag= %d, can_start_flag = %d , thread_finished_flag = %d",	    start_enable_flag,restart_power_on_flag,can_start_flag,thread_finished_flag);
 		
 	if(start_enable_flag == 1)
 	{
@@ -889,17 +879,20 @@ static int start_pressure_dial( struct spictl_device_t* dev , float flag0_value 
         return 0;
 	}else{
 	    start_enable_flag = 1;
-	}	
+	}
+	if (can_start_flag == 1)
+	{
+	    return 0;  
+	}
 	
-	LOGD("xin: 响应压力表盘点击开始 [%s]\n" ,  log_time( )); 
+	
     if(restart_power_on_flag == 1) // 当内部stop DMA，fpga,关闭设备后，flag 置1， 当再启动start接口时不再重新上电，当对外大的停止采集下电后，此flag会置为 0，重新采集时再上电
 	{
 		;
 	}else{
 		poweron_spi(  );		
 		
-		reg_ret_value = set_press_reg( smp_rate );	//设置压力采集寄存器 
-		usleep(2000000); //用于上层时域波形不丢波形数据，在这里直接延时2S,让硬 件预热稳定
+		int reg_ret_value = set_press_reg( smp_rate );	//设置压力采集寄存器 
 		
 		if( reg_ret_value == -1)
 		{	
@@ -909,21 +902,11 @@ static int start_pressure_dial( struct spictl_device_t* dev , float flag0_value 
             spi_power_off(  );			
 			return 0;
 		}
-		
 	}
 	
-	if (can_start_flag == 1)
-	{
-	    return 0;  
-	}		
-	
+	usleep(2000000); //用于上层时域波形不丢波形数据，在这里直接延时2S,让硬 件预热稳定
 	start_num++;
-    usleep(100000);//用于stop 和start DMA,寄存器稳定
 	sem_init( &run_sem ,  0 ,  0 );   //初始化信号量
-	
-	pflag0_value = flag0_value;
-	
-	stop_smp_flag = 0;
 	
 	pthread_create( &c_id ,  NULL ,  press_dial_thread ,  NULL );
     signal( SIGIO ,  read_press_data );	
@@ -936,8 +919,7 @@ static int start_pressure_dial( struct spictl_device_t* dev , float flag0_value 
     power_off_flag = 0;	
 	start_enable_flag = 0;
 	
-	//restart_power_on_flag = 0;
-	LOGD( "xin: 响应压力表盘点击结束 [%s]\n" ,  log_time( ) ); 	
+	LOGD( "xin: 点击压力表盘结束 [%s]\n" ,  log_time( ) ); 	
 	usleep( 100000 ); //用于底层虚拟地址和物理地址映射出错	
 	
 	return 0; 
@@ -969,18 +951,17 @@ void read_evalute_data( int signo) //读取振动评估数据    通道2, 下限
 }
 
 void read_vibrate_data( int signo) //读取振动采集数据
-{	    
-    LOGD( "xin: read_vibrate_data_stop_smp_flag = %d,g_loop_num = %d, g_smpLength = %d , g_chNum =%d  , [%s]\n" ,  stop_smp_flag, g_loop_num, g_smpLength , g_chNum , log_time( ) ); 
+{	 
+    //LOGD( "xin: 读取振动数据时stop_smp_flag = %d,g_loop_num = %d, g_smpLength = %d , power_off_flag =%d  , [%s]\n" ,  stop_smp_flag, g_loop_num, g_smpLength , power_off_flag , log_time( ) );
 	if(power_off_flag == 1) 
 	{	
 		LOGD("xin: 读取振动数据时，检测到下电标识，不再读取数据提前stop fpga DMA,post信号量");
 		stop_smp_flag = 1;
 		stop_fpga_dma();	
 		sem_post( &run_sem ); 
-		
 		return ;
 	}
-
+    
 	if( stop_smp_flag )
 	{		 
 		return;
@@ -1058,7 +1039,7 @@ void read_vibrate_data( int signo) //读取振动采集数据
 
 void read_calibration_data( int signo) //读取振动校准数据
 {	    
-    LOGD( "xin: read_calibration_data_stop_smp_flag = %d,g_loop_num = %d, g_smpLength = %d , g_chNum =%d  , [%s]\n" ,  stop_smp_flag, g_loop_num, g_smpLength , g_chNum , log_time( ) ); 
+   // LOGD( "xin: 读取振动校准数据stop_smp_flag = %d,g_loop_num = %d, g_smpLength = %d , power_off_flag =%d  , [%s]\n" ,  stop_smp_flag, g_loop_num, g_smpLength , power_off_flag , log_time( ) ); 
 	if(power_off_flag == 1) 
 	{	
 		LOGD("xin: 读取振动数据时，检测到下电标识，不再读取数据提前stop fpga DMA,post信号量");
@@ -1138,7 +1119,7 @@ void *time_wave_thread( void* arg ) //时域线程
     int t_max_freq = (int)my_timewave.max_freq;
     int t_min_freq = (int)my_timewave.min_freq;
     int t_wave_length = my_timewave.wave_length;
-	LOGD("time_wave_thread_maxfreq = %d, minfreq = %d, wavelength = %d, t_discard_pnts = %d",(int)my_timewave.max_freq,(int)my_timewave.min_freq,my_timewave.wave_length,t_discard_pnts);
+	LOGD("时域运算线程maxfreq = %d, minfreq = %d, wavelength = %d, t_discard_pnts = %d",(int)my_timewave.max_freq,(int)my_timewave.min_freq,my_timewave.wave_length,t_discard_pnts);
     
 	if( g_chNum == SINGLE_CH )
 	{		
@@ -1153,7 +1134,7 @@ void *time_wave_thread( void* arg ) //时域线程
 			g_smpLength = ( t_wave_length + t_discard_pnts );	//实际采集的波形长度			
 		}
 
-		LOGD( "xin: 时域线程单通道t_discard_pnts = %d ,  t_wave_length = %d ,  g_smpLength = %d"  , t_discard_pnts ,  t_wave_length ,  g_smpLength );
+		LOGD( "xin: 时域运算线程单通道t_discard_pnts = %d ,  t_wave_length = %d ,  g_smpLength = %d"  , t_discard_pnts ,  t_wave_length ,  g_smpLength );
 				
 		//分配需要的内存
 		float *time_CH1_smp_buf = NULL; //通道1 采样数据  长度为UI配置长度 + 丢弃的点数
@@ -1215,7 +1196,7 @@ void *time_wave_thread( void* arg ) //时域线程
     stop_daq:	
         if(power_off_flag == 1) 
 		{	
-            LOGD("xin: 时域数据线程检测到下电标识为1，释放内存，销毁信号量，回调false给上层 [%s]\n" ,  log_time( ) ); 
+            LOGD("xin: 时域运算线程检测到下电标识为1，释放内存，销毁信号量，回调false给上层 [%s]\n" ,  log_time( ) ); 
 			if( time_CH1_smp_buf !=NULL)
 			{			
 				free( time_CH1_smp_buf );
@@ -1232,7 +1213,7 @@ void *time_wave_thread( void* arg ) //时域线程
 			vibrate_callback_backup.single_ch_callback( invalid_buf , 0,  false );	/////回调时域波形			
 		    return NULL;
 		}else{           	
-            LOGD("xin: 时域数据线程正常回调数据");			
+            LOGD("xin: 时域运算线程正常回调数据");			
 			vibrate_callback_backup.single_ch_callback( time_CH1_smp_buf , t_wave_length ,  true );	/////回调时域波形
 		}
 		
@@ -1248,7 +1229,7 @@ void *time_wave_thread( void* arg ) //时域线程
 		sem_destroy( &run_sem );
 		if(power_off_flag == 1) 
 		{
-			LOGD("xin: 时域数据线程检测到下电标识为1");
+			LOGD("xin: 时域运算线程检测到下电标识为1");
 			thread_finished_flag = 1;
 			usleep(10000);                                          
 			
@@ -1271,7 +1252,7 @@ void *time_wave_thread( void* arg ) //时域线程
 			g_smpLength = ( t_wave_length+ t_discard_pnts )*2;	//实际采集的波形长度
 		}
 	
-		//LOGD( "xin: time_wave_thread_DOUBLE_CH_t_discard_pnts = %d ,  t_wave_length = %d ,  g_smpLength = %d"  , t_discard_pnts ,  t_wave_length,  g_smpLength );        
+		//LOGD( "xin: 时域运算线程双通道t_discard_pnts = %d ,  t_wave_length = %d ,  g_smpLength = %d"  , t_discard_pnts ,  t_wave_length,  g_smpLength );        
 	    
         	
         //分配需要的内存			
@@ -1671,7 +1652,7 @@ void *total_rend_thread( void* arg ) //总值趋势线程
 	return NULL;
 }
 
-void *evalute_level_thread( void* arg ) //等级评估线程
+void *evalute_level_thread( void* arg ) //振动等级评估线程
 {    
     timewave my_timewave;
     my_timewave = *( struct time_wave_para* )arg;	
@@ -1688,7 +1669,7 @@ void *evalute_level_thread( void* arg ) //等级评估线程
 	{
 		g_smpLength = ( e_wave_length + e_discard_pnts +31 )*2;	//针对 这1000频率，需要1/2 抽点，所以采集升度 *2
 	}	
-	//LOGD( "xin: evalute_level_thread_SINGLE_CH_e_discard_pnts = %d ,  e_wave_length = %d ,  g_smpLength = %d"  , e_discard_pnts ,  e_wave_length ,  g_smpLength );
+	//LOGD( "xin: 振动等级评估线程e_discard_pnts = %d ,  e_wave_length = %d ,  g_smpLength = %d"  , e_discard_pnts ,  e_wave_length ,  g_smpLength );
 			
     //分配需要的内存
     float *evalute_CH1_smp_buf =NULL; //振动评估 通道1 采集数据
@@ -1740,7 +1721,13 @@ void *evalute_level_thread( void* arg ) //等级评估线程
 	start_enable_flag = 0;	
 	restart_power_on_flag = 0;  //此时两个flag 置0,防止其它测试时卡住
 			
-    ioctl( fd ,  SPIDEV_IOC_RXSTREAMOFF ,  NULL ); //停止DMA采集
+    int res = ioctl( fd ,  SPIDEV_IOC_RXSTREAMOFF ,  NULL ); //停止DMA搬运
+    if( res !=0 ) //启动DMA采集失败时，重新启动
+	{		
+        LOGD( "振动等级评估: DMA采集-停止失败 ,fd = %d",fd ); 
+    }else{
+        LOGD( "振动等级评估: DMA采集-停止成功 ,fd = %d",fd ); 
+    }
 	swrite( StopSampleAddr , StopSampleData );//stop fpga
     close( fd );					
 	spi_power_off( );  //下电	  
@@ -1765,7 +1752,7 @@ void *vibrate_calib_thread( void* arg ) //振动校准线程
     int v_min_freq = (int)my_timewave.min_freq;
     int v_wave_length = my_timewave.wave_length;  
     g_smpLength = ( v_wave_length + v_discard_pnts );	//实际采集的波形长度
-	LOGD( "xin: vibrate_calib_thread_SINGLE_CH_v_discard_pnts = %d ,  v_wave_length = %d ,  g_smpLength = %d"  , v_discard_pnts ,  v_wave_length ,  g_smpLength );
+	LOGD( "xin: 振动校准线程v_discard_pnts = %d ,  v_wave_length = %d ,  g_smpLength = %d"  , v_discard_pnts ,  v_wave_length ,  g_smpLength );
 			
     //分配需要的内存
     float *calib_CH1_smp_buf =NULL; //振动校准  通道1 采集数据
@@ -1799,7 +1786,7 @@ void *vibrate_calib_thread( void* arg ) //振动校准线程
 	calib_value[0] = rend_value( calib_CH1_smp_buf ,  v_wave_length ,  2 );	//峰峰值 2
 	calib_value[1] = rend_value( calib_CH1_smp_buf ,  v_wave_length ,  3 );	//平均值 3
         
-	LOGD( "xin: 计算出校准值峰峰值 = %f, 平均值 = %f\n" ,  calib_value[0], calib_value[1]);	
+	LOGD( "xin: 计算出振动校准 峰峰值 = %f, 平均值 = %f\n" ,  calib_value[0], calib_value[1]);	
 
     if( calib_CH1_smp_buf != NULL)
 	{
@@ -1808,7 +1795,13 @@ void *vibrate_calib_thread( void* arg ) //振动校准线程
 	}
 	
 	////////自动stop
-    ioctl( fd ,  SPIDEV_IOC_RXSTREAMOFF ,  NULL ); //停止DMA采集
+    int res = ioctl( fd ,  SPIDEV_IOC_RXSTREAMOFF ,  NULL ); //停止DMA搬运
+    if( res !=0 ) //启动DMA采集失败时，重新启动
+	{		
+        LOGD( "振动校准: DMA采集-停止失败 ,fd = %d",fd ); 
+    }else{
+        LOGD( "振动校准: DMA采集-停止成功 ,fd = %d",fd ); 
+    }
 	swrite( StopSampleAddr , StopSampleData );//停止FPGA采集
     close( fd );					
 	spi_power_off( );  //下电	  
@@ -1820,8 +1813,7 @@ void *vibrate_calib_thread( void* arg ) //振动校准线程
 
 static int start_vibrate_CH_timewave( struct spictl_device_t* dev ,  int ch_num , struct time_wave_para tWave  )//时域波形
 {	
-   LOGD("xin: 响应时域点击开始 [%s]\n" ,  log_time( )); 
-   LOGD("xin: start_vibrate_CH_timewave_start_num = %d",start_num);
+   LOGD("xin: 响应时域点击开始start_num = %d",start_num);
    if(start_num != 0)
    {
       /* LOGD("xin: start_vibrate_CH_timewave stop未完全结束，此时要重新采集");
@@ -1910,8 +1902,7 @@ static int start_vibrate_CH_timewave( struct spictl_device_t* dev ,  int ch_num 
 
 static int start_vibrate_CH_totalrend( struct spictl_device_t* dev ,  int ch_num , struct total_rend_para tRend  )//总值趋势
 {
-    LOGD("xin: 响应总值点击开始 [%s]\n" ,  log_time( )); 
-    LOGD("xin: start_vibrate_CH_totalrend_start_num = %d",start_num);
+    LOGD("xin: 响应总值点击开始start_num = %d",start_num);
     if(start_num != 0)
     {
 	   return 0; 
@@ -1995,7 +1986,7 @@ static int start_vibrate_CH_totalrend( struct spictl_device_t* dev ,  int ch_num
 /* 下限10hz  上限1000Hz  波长4k */
 static int start_vibrate_evalute_level( struct spictl_device_t* dev , struct time_wave_para tWave )//振动等级评估
 {	
-    LOGD("xin: start_vibrate_evalute_level_start_num = %d",start_num);
+    LOGD("xin: 响应振动等级评估开始start_num = %d",start_num);
     if(start_num != 0)
     {
 	   return 0; 
@@ -2008,7 +1999,7 @@ static int start_vibrate_evalute_level( struct spictl_device_t* dev , struct tim
 	g_smpLength = 0;	
 	test_mode = tWave.version_mode;
 	
-	LOGD( "\nxin: start_vibrate_evalute_level_signal_type = %d ,  min_freq = %d , max_freq = %d , wave_length = %d ,test_mode = %d",	 tWave.signal_type ,  (int)tWave.min_freq ,  (int)tWave.max_freq  , tWave.wave_length, test_mode);	
+	LOGD( "\nxin: 响应振动等级评估开始signal_type = %d ,  min_freq = %d , max_freq = %d , wave_length = %d ,test_mode = %d",	 tWave.signal_type ,  (int)tWave.min_freq ,  (int)tWave.max_freq  , tWave.wave_length, test_mode);	
 	 
 	if( !is_right_length(tWave.wave_length))
 	{
@@ -2016,12 +2007,8 @@ static int start_vibrate_evalute_level( struct spictl_device_t* dev , struct tim
 		return 0;
 	}
 	
-	//LOGD( "xin: 响应评估点击开始 [%s]\n" ,  log_time( ) ); 	
-	
-	poweron_spi(  );	
-	
+	poweron_spi(  );		
 	int reg_ret_value = set_singleCH_vibrate_reg( tWave.signal_type , (int)tWave.max_freq , (int)tWave.min_freq );//设置单通道采集寄存器，数据类型为 速度时域波形
-		
 	if( reg_ret_value == -1)
 	{
 		LOGD("xin: 寄存器配置失败");
@@ -2041,7 +2028,7 @@ static int start_vibrate_evalute_level( struct spictl_device_t* dev , struct tim
 	
 	signal( SIGIO ,  read_evalute_data ); 				
 	  		 
-	//LOGD( "xin: 响应评估点击结束 [%s]\n" ,  log_time( ) ); 
+	//LOGD( "xin: 响应振动等级评估结束 [%s]\n" ,  log_time( ) ); 
 	return 0;
 }
 
@@ -2049,14 +2036,14 @@ static int start_vibrate_evalute_level( struct spictl_device_t* dev , struct tim
 /* 振动校准,上限40KHZ, 下限分DC耦合5HZ, AC耦合10HZ, 加速度，速度，位移都要校准*/
 static int start_vibrate_calibration( struct spictl_device_t* dev ,struct time_wave_para tWave)//振动校准
 {	
-	LOGD( "xin: 响应校准点击开始 [%s]\n" ,  log_time( ) ); 	
+	LOGD("xin: 响应振动校准开始start_num = %d",start_num);
     
     stop_smp_flag = 0;	
 	g_loop_num = 0;
 	g_smpLength = 0;	
 	test_mode = tWave.version_mode;
     
-	LOGD("\nxin: start_vibrate_calibration_signal_type= %d ,min_freq = %d ,max_freq = %d ,wave_length = %d ",tWave.signal_type,(int)tWave.min_freq,(int)tWave.max_freq,tWave.wave_length);	
+	LOGD("\nxin: 响应振动校准开始signal_type= %d ,min_freq = %d ,max_freq = %d ,wave_length = %d ",tWave.signal_type,(int)tWave.min_freq,(int)tWave.max_freq,tWave.wave_length);	
 
 	poweron_spi( );	  
     set_singleCH_vibrate_reg( tWave.signal_type , (int)tWave.max_freq , (int)tWave.min_freq);//设置单通道采集寄存器，数据类型为 速度时域波形
@@ -2070,7 +2057,7 @@ static int start_vibrate_calibration( struct spictl_device_t* dev ,struct time_w
 	signal( SIGIO, read_calibration_data ); 				
 	  		 
     
-	LOGD( "xin: 响应振动校准点击结束 [%s]\n" , log_time( ) ); 
+	LOGD( "xin: 响应振动校准结束 [%s]\n" , log_time( ) ); 
 	return 0;
 }
 
@@ -2113,7 +2100,7 @@ void *freq_wave_thread( void* arg ) //频域线程
     freqwave my_freqwave ;
 	my_freqwave = *( struct freq_wave_para* )arg;		
 	int i=0 , j=0 , k=0;	
-	float CH_data[3]={0.0};
+	float f_CH_data[3]={0.0};
 	int f_discard_pnts = Get_InvalidNum((int)my_freqwave.max_freq , (int)my_freqwave.min_freq ); 
     int f_max_freq = (int)my_freqwave.max_freq;
     int f_min_freq = (int)my_freqwave.min_freq;
@@ -2180,8 +2167,8 @@ void *freq_wave_thread( void* arg ) //频域线程
 
 			for( i=0;i< g_smpLength;i++ )			
 			{					
-				analyze_CH_data( g_smp_buf[i] , CH_data );  //调用解析通道数据的函数								
-				freq_CH1_smp_buf[i] = CH_data[2];		 							
+				analyze_CH_data( g_smp_buf[i] , f_CH_data );  //调用解析通道数据的函数								
+				freq_CH1_smp_buf[i] = f_CH_data[2];		 							
 			} 
 						
 			enter_IIR_Filter( freq_CH1_smp_buf , g_smpLength ,( int )my_freqwave.max_freq ,( int )my_freqwave.min_freq ); //IIR 高通滤波，长度是采样长度
@@ -2323,9 +2310,9 @@ void *freq_wave_thread( void* arg ) //频域线程
 	
 			for( i=0;i< g_smpLength;i++ )			
 			{					
-				analyze_CH_data( g_smp_buf[i] , CH_data );  //调用解析通道数据的函数	
-				freq_CH1_smp_buf[i] = CH_data[1];
-				freq_CH2_smp_buf[i] = CH_data[2];				
+				analyze_CH_data( g_smp_buf[i] , f_CH_data );  //调用解析通道数据的函数	
+				freq_CH1_smp_buf[i] = f_CH_data[1];
+				freq_CH2_smp_buf[i] = f_CH_data[2];				
 			}			
 			for( k=0;k<g_smpLength/2;k++ )
 			{					
@@ -2361,8 +2348,6 @@ static int start_vibrate_CH_freqwave( struct spictl_device_t* dev , int ch_num ,
 		set_doubleCH_vibrate_reg( fWave.signal_type , (int)fWave.max_freq , (int)fWave.min_freq );//设置双通道采集寄存器	
 
 	sem_init( &run_sem ,  0 ,  0 );
-	
-    
    	
     exit_thread_flag = false;	
 	post_flag = true;
