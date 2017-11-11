@@ -24,33 +24,26 @@ import java.util.ArrayList;
  */
 
 public class ILineLight {
-	public static final int YELLO =3;
-	public static final int BLUE =4;
-	public static final int RED =5;
+	public static final int YELLOW=13;
+	public static final int GREEN =14;
+	public static final int RED =15;
 	public static final int KEY_LIGHT =9;
 	public ILineLight(){
 		
 	}
 	
-	public void openLightDevice(){
+    /* public void openLightDevice(){
 		startNativeLightDevice();
-	}
+	} */
 	
-	public void closeLightDevice(){
+	public void setLight(int light,int status){
+		startNativeLightDevice();
+		setNativeLight(light,status);
 		stopNativeLightDevice();
 	}
 	
-	public void setLightOpen(int light){
-		setNativeLightOpen(light);
-	}
-	public void setLightClose(int light){
-		setNativeLightClose(light);
-	}
     private native void startNativeLightDevice();
     private native void stopNativeLightDevice();
-    private native void setNativeLightOpen(int light);
-    private native void setNativeLightClose(int light);
-    
-      
+    private native void setNativeLight(int light,int status);
 }
 

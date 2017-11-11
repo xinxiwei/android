@@ -1818,7 +1818,11 @@ public final class Settings {
         public static final String SCREEN_KEY_SMARTLIGHT = "screen_key_smartlight";
         
         public static final String  SHUTDOWN_FLAG = "shutdown_flag";
-
+		/*add by lianghao 2017.11.7 */
+		public static final String USB_CONNECT_STATUS="usb_status";
+		
+		public static final String VERSION_STATUS="version_status";
+		/*end */
         public static final String SENSOR_CALIBRATION = "senser_calibration";
 
         public static final String AUTO_GPS = "auto_gps";

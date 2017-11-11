@@ -1,4 +1,4 @@
-#include <hardware/hardware.h>
+﻿#include <hardware/hardware.h>
 #include <hardware/gpio.h>
 #include <hardware/log.h>
 #include <fcntl.h>
@@ -24,7 +24,8 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
-
+/* FIR低通滤波器，用上限卡 */
+    
 /*分析频率为500Hz时，各阶OnceFIR的滤波器系数
 Input Sampling Rate = 5120Hz
 Output Sampling Rate = 1280 Hz
@@ -363,14 +364,14 @@ typedef struct
     float*   coeff;         // 滤波器系数
 } fir_stage_t;
 
-typedef  struct
+/* typedef  struct
 {
     uint32_t    length;      // buffer长度
     uint32_t    wr_idx;      // buffer写索引
     uint32_t    rd_idx;      // buffer读索引
     uint32_t    cur_items;   // buffer中的数据个数
     float*      data;        // buffer的数据缓存区
-} cir_buf_t;
+} cir_buf_t; */
 
 typedef struct
 {
@@ -378,9 +379,10 @@ typedef struct
     fir_stage_t** stages;
 } fir_filter_item_t;
 
+/* Fir低通滤波器系数表，根据档位划分 */
 static fir_filter_item_t fir_items[ FIR_FILTER_NUMBER ];
 
-//功能描述: 查找滤波器
+/* 功能描述: 查找滤波器 */
 static fir_filter_item_t* get_filter_item_by_up_freq(uint32_t up_freq)
 {
     uint8_t index = 0;
@@ -396,56 +398,14 @@ static fir_filter_item_t* get_filter_item_by_up_freq(uint32_t up_freq)
 		case 20000: index = FIR_F20000; break;
 		case 40000: index = FIR_F40000; break;
         default: return NULL;
-    }
-    
+    }    
     return &fir_items[ index ];
 }
 
-/**********************************************************************
-* 函数名称: run_fir
-* 功能描述: 运行FIR滤波算法节点
-* 输入参数: node: FIR滤波算法节点
-* 输出参数: void
-* 返 回 值: bool
-* 其他说明: 
-* 修改日期       版本号     作者         修改内容
-* -----------------------------------------------
-* 2016/11/10     V1.0       tyx          新建
-* 2016/11/28     V1.1       Bruce Cheng  按照项目要求改写函数
-* 2016/11/30     V1.2       Kous         细化
-**********************************************************************/
-void run_fir(float *src, 
-          int length,  //原数据长度
-		  int coeff_number,//滤波器系数点数
-		  int decifactor,//抽样点数
-		  float *coeffs, //滤波器系数
-		  float *dst
-		  )
-{	
-	int    idx       = 0;
-    int    position  = 0;
-	int    i   = 0 , read_idx = 0;
-	float  fir_data = 0.0;
-	int    cur_items = length;
-    
-	while( cur_items >= coeff_number )
-	{		     
-		// 每个抽样的点都计算一次         
-        for (idx = 0; idx < coeff_number; idx++)
-        {  	       
-            position = read_idx + idx;					
-            fir_data += ((src[ position ])*(coeffs[ idx ]));		
-            //LOGD("fir_data000[%d] =%f",idx, fir_data);			
-        }
-		
-		dst[ i++ ] = fir_data ;
-		fir_data = 0;
-		read_idx  +=  decifactor ;       	
-		cur_items -= decifactor;					
-	}	
-}
 
-//功能描述: 初始化FIR滤波器
+
+
+/* 功能描述: 初始化FIR滤波器 */
 bool init_fir_filters(void)
 {
     // 初始化500Hz档位系数
@@ -468,8 +428,7 @@ bool init_fir_filters(void)
     // 第二级
     fir_items[ FIR_F500 ].stages[ 1 ]->coeff        = fir_500_2stage_coeffs;
     fir_items[ FIR_F500 ].stages[ 1 ]->decifactor   = FIR_500_2STAGE_DECIFACTOR;
-    fir_items[ FIR_F500 ].stages[ 1 ]->coeff_number = FIR_500_2STAGE_SIZE;
-    
+    fir_items[ FIR_F500 ].stages[ 1 ]->coeff_number = FIR_500_2STAGE_SIZE;    
 
 	
     // 初始化1000Hz档位系数
@@ -545,24 +504,60 @@ bool init_fir_filters(void)
     return true;
 }
 
+/* 功能描述: 运行FIR滤波算法 */
+void run_fir(float *src, 
+          int length,  //原数据长度
+		  int coeff_number,//滤波器系数点数
+		  int decifactor,//抽样点数
+		  float *coeffs, //滤波器系数
+		  float *dst
+		  )
+{	
+	int    idx       = 0;
+    int    position  = 0;
+	int    i   = 0 , read_idx = 0;
+	float  fir_data = 0.0;
+	int    cur_items = length;
+    if(src == NULL || coeffs == NULL || dst == NULL)
+    {
+        exit(EXIT_FAILURE);
+    }
+	while( cur_items >= coeff_number )
+	{		     
+		// 每个抽样的点都计算一次         
+        for (idx = 0; idx < coeff_number; idx++)
+        {  	       
+            position = read_idx + idx;					
+            fir_data += ((src[ position ])*(coeffs[ idx ]));		
+            //LOGD("fir_data000[%d] =%f",idx, fir_data);			
+        }
+		
+		dst[ i++ ] = fir_data ;
+		fir_data = 0;
+		read_idx  +=  decifactor ;       	
+		cur_items -= decifactor;					
+	}	
+}
 
+/* 功能描述：fir低通滤波入口函数 */
  void  enter_FIR_Filter( float *src_data  , int length  ,  int up_freq)
 {
 	LOGD( "xin: enter_FIR_Filter_length = %d ,  up_freq = %d " , length , up_freq  );
 	
-	int i=0;
-    #if 0	
-    for( i=0;i<300;i++ )
-	{
-        LOGD( "enter_FIR_Filter_src_data[ %d ] = %f" , i , src_data[ i ] );
-	}	
-	#endif
+	int i=0;   
 	
+    if(src_data == NULL || length ==0 || up_freq ==0)
+    {
+        exit( EXIT_FAILURE );
+    }
+    
+    
 	init_fir_filters( );//初始化FIR滤波器系数
 	
 	fir_filter_item_t *pfir_filter = NULL;
 	pfir_filter =  get_filter_item_by_up_freq(up_freq);
 	
+    
 	float *pdst = NULL;
 	if( pdst == NULL)
 	{
@@ -576,9 +571,7 @@ bool init_fir_filters(void)
 	}
 	
 	for( i=0;i< pfir_filter->stage_number; i++)
-	{		
-        //LOGE( "stage_number = %d" , pfir_filter->stage_number );
-		//LOGE(" coeff_number = %d, %d,", pfir_filter->stages[i]->coeff_number, pfir_filter->stages[i]->decifactor);
+	{	        
 		run_fir( src_data, (length), pfir_filter->stages[i]->coeff_number , pfir_filter->stages[i]->decifactor, pfir_filter->stages[i]->coeff , pdst);
 		memset( src_data,0,(length) * sizeof(float));	 
 		memcpy( src_data, pdst, (length/2) *sizeof(float));
@@ -588,7 +581,6 @@ bool init_fir_filters(void)
 	//{	
 		//LOGD("xin: 经过FIR后src_data[%06d]  = %f",i,src_data[i]);
 	//}
-
 	if( pdst != NULL)
 	{
 		free(pdst);

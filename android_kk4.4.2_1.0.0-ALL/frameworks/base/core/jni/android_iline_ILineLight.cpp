@@ -22,15 +22,13 @@
 #include "utils/Log.h"
 #include "utils/misc.h"
 #include "android_runtime/AndroidRuntime.h"
-#include <hardware/imx6q_ctr.h>
+#include <hardware/imx6q_light.h>
 
 #include <pthread.h>
 namespace android {
 
 
 struct gpioctl_device_t* gpioctl_dev = NULL;
-
-
 
 static void gpioctl_ctl_open(const struct hw_module_t* module ,struct gpioctl_device_t** dev){
 	module->methods->open(module,GPIOCTL_HARDWARE_MODULE_ID,(struct hw_device_t**)dev);
@@ -40,66 +38,42 @@ static void android_debug_JNITest_startDevice(JNIEnv* env, jobject object){
 	gpioctl_module_t* gpio_module = NULL;
 	jboolean isStart  = false;
 	if(hw_get_module(GPIOCTL_HARDWARE_MODULE_ID,(const hw_module_t**)&gpio_module) == 0){
-		gpioctl_ctl_open(&(gpio_module->common),&gpioctl_dev);//////
-		ALOGE("SuCESSLight");
+		gpioctl_ctl_open(&(gpio_module->common),&gpioctl_dev);
+		//ALOGE("start lightdevice success");
 		isStart = true;
 	}else{
-		 ALOGE("JNI testLight:");
+		ALOGE("start lightdevice fail");
 		 isStart = false;
 	}
 }
 
 static void android_debug_JNITest_stopDevice(JNIEnv* env, jobject object){
-	ALOGE("STOPADLight");
 	if(gpioctl_dev){
 		gpioctl_dev->gpioctl_close(gpioctl_dev);
 	}
-	ALOGE("STOPAD11Light");
+	//ALOGE("stop lightdevice ");
 }
 
-
-static void android_debug_JNITest_startLightOn(JNIEnv* env, jobject object,jint light){
-	//0 hong 1,huang,2 lv  »Æ 3 lv 4 bhong 5
+static void android_debug_JNITest_setLight(JNIEnv* env, jobject object,jint light,jint status){
+	//light ÊÇ¼üÖµ£¬»Æ 13, ÂÌ 14, ºì 15£¬ 
+	//ALOGE("android_debug_JNITest_setLight light = %d, status = %d",light,status);
 	if(gpioctl_dev){
-		gpioctl_dev->set_val(gpioctl_dev,light,1);
+		gpioctl_dev->set_light_val(gpioctl_dev, light, status); 
 	}
 }
 
-
-static void android_debug_JNITest_startLightOff(JNIEnv* env, jobject object,jint light){
-
-	if(gpioctl_dev){
-		 gpioctl_dev->set_val(gpioctl_dev,light,0);
-	}
-}
 static JNINativeMethod gMethods[] = {
     /* name, signature, funcPtr */
-    { "startNativeLightDevice",      "()V",
-            (void*) android_debug_JNITest_startDevice },
-    { "stopNativeLightDevice",      "()V",
-                     (void*) android_debug_JNITest_stopDevice },
-    { "setNativeLightOpen",      "(I)V",
-                     (void*) android_debug_JNITest_startLightOn },
-    { "setNativeLightClose",      "(I)V",
-                     (void*) android_debug_JNITest_startLightOff },
-
+    { "startNativeLightDevice",      "()V",          (void*) android_debug_JNITest_startDevice },
+    { "stopNativeLightDevice",      "()V",           (void*) android_debug_JNITest_stopDevice },
+    { "setNativeLight",      "(II)V",             (void*) android_debug_JNITest_setLight },
 };
+
 int register_android_iline_ILineLight(JNIEnv* env)
 {
-    return jniRegisterNativeMethods(env, "android/iline/ILineLight",
-        gMethods, NELEM(gMethods));
+    return jniRegisterNativeMethods(env, "android/iline/ILineLight", gMethods, NELEM(gMethods));
 }
 
-/*
-#if 0
- trampoline into C++ 
-extern "C"
-int register_android_debug_JNITest_C(JNIEnv* env)
-{
-    return android::register_android_debug_JNITest(env);
-}
-#endif*/
-
-}; // namespace android
+}; 
 
 

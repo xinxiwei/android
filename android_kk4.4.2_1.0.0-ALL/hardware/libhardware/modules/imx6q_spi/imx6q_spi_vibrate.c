@@ -26,8 +26,10 @@
 #define  SG_TIMESIGNAL_HANDLE_RMS   0 //有效值
 #define  SG_TIMESIGNAL_HANDLE_PK    1 //峰值
 #define  SG_TIMESIGNAL_HANDLE_PP    2 //峰峰值
+#define  SG_TIMESIGNAL_HANDLE_DC    3 //平均值
 
-void feature_value(float *pData, int length,float *ret_value)//15个特征值
+/* 功能描述：求出15个特征值 */
+void feature_value(float *pData, int length,float *ret_value)
 {
 	int i=0;	
     double *src_data=NULL;	
@@ -77,7 +79,8 @@ void feature_value(float *pData, int length,float *ret_value)//15个特征值
 	}
 }
 
-float rend_value(float *pData, int length, int totalvalue_type)//总值趋势值 单个值
+/* 功能描述：针对总值趋势类型分别求 单个特征值 */
+float rend_value(float *pData, int length, int totalvalue_type)
 {
 	float ret_value = 0.0;
 	double *src_data2=NULL;
@@ -110,6 +113,9 @@ float rend_value(float *pData, int length, int totalvalue_type)//总值趋势值
 			case SG_TIMESIGNAL_HANDLE_PP: //峰峰值2
 				 ret_value = (float)WALG_TDA_TruePeakToPeakValue(src_data2,length);             	
 				 break;
+            case SG_TIMESIGNAL_HANDLE_DC: //平均值3
+				 ret_value = (float)WALG_TDA_DCValue(src_data2,length);           	
+				 break;                   
 			default:
 				 break;
 		}

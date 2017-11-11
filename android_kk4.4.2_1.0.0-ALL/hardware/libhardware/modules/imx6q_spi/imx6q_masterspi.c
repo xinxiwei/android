@@ -1,4 +1,4 @@
-/*
+﻿/*
  *
  * Date:2016-8-9
  * Author:lhx
@@ -74,6 +74,7 @@ int swrite( unsigned int  laddr , unsigned int data )
 	usleep( 50000 );
 	return ret;//0 is right.
 }
+
 int wr( unsigned int tbuf[] )
 {
    int res=0;

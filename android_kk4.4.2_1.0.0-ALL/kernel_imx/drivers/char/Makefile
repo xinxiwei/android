@@ -32,8 +32,9 @@ obj-$(CONFIG_HPET)		+= hpet.o
 obj-$(CONFIG_GEN_RTC)		+= genrtc.o
 obj-$(CONFIG_EFI_RTC)		+= efirtc.o
 obj-$(CONFIG_DS1302)		+= ds1302.o  
-obj-$(CONFIG_IMX6Q_CONTROL_GPIO) += imx6q_control_gpio.o  
-#obj-y += xin_gpio.o 
+obj-$(CONFIG_IMX6Q_CONTROL_GPIO) += imx6q_control_gpio.o 
+obj-$(CONFIG_IMX6Q_CONTROL_LIGHT) += imx6q_control_light.o  
+obj-$(CONFIG_IMX6Q_CONTROL_BACKLIGHT) += imx6q_control_backlight.o 
 
 obj-$(CONFIG_XILINX_HWICAP)	+= xilinx_hwicap/
 ifeq ($(CONFIG_GENERIC_NVRAM),y)
@@ -45,6 +46,7 @@ obj-$(CONFIG_TOSHIBA)		+= toshiba.o
 obj-$(CONFIG_I8K)		+= i8k.o
 obj-$(CONFIG_DS1620)		+= ds1620.o
 obj-$(CONFIG_HW_RANDOM)		+= hw_random/
+obj-$(CONFIG_HELLO) += xin_hello/
 obj-$(CONFIG_PPDEV)		+= ppdev.o
 obj-$(CONFIG_NWBUTTON)		+= nwbutton.o
 obj-$(CONFIG_NWFLASH)		+= nwflash.o

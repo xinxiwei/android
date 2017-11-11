@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package android.iline;
 import android.util.Log;
 import android.os.Handler;
@@ -23,20 +22,25 @@ import java.util.ArrayList;
  * Simple JNI verification test.
  */
 public class ILineBeep {
+	public static final int BEEP_TYPE = 1;
+	public static final int SENSOR_TYPE = 2;
 	public ILineBeep(){
 		
 	}
 	
-	public void openBeep(){
-		startNativeBeep();
+	public void openDevice(){
+		startOpenKey();
+	}
+	public void openKey(int key){
+		startNativeKey(key);
 	}
 	
-	public void closeBeep(){
-		stopNativeBeep();
+	public void closeKey(int key){
+		stopNativeKey(key);
 	}
-    private native void startNativeBeep();
-    private native void stopNativeBeep();
-
-      
+	
+    private native void startOpenKey();
+    private native void startNativeKey(int key);
+    private native void stopNativeKey(int key);	    
 }
 

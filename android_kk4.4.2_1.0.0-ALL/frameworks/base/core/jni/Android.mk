@@ -135,6 +135,7 @@ LOCAL_SRC_FILES:= \
 	android_iline_ILineGatherModule.cpp \
 	android_iline_ILineBeep.cpp \
 	android_iline_ILineLight.cpp \
+	android_iline_ILineBackLight.cpp \
 	android_iline_ILineVibrationModule.cpp \
 	android_util_FileObserver.cpp \
 	android/opengl/poly_clip.cpp.arm \

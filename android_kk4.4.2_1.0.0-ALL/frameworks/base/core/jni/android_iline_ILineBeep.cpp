@@ -22,74 +22,57 @@
 #include "utils/Log.h"
 #include "utils/misc.h"
 #include "android_runtime/AndroidRuntime.h"
-#include <hardware/imx6q_keysound.h>
+#include <hardware/imx6q_beep.h>
 
 #include <pthread.h>
 namespace android {
 
 
 struct keyctl_device_t* keyctl_dev = NULL;
-
+struct keyctl_device_t* keyctl_dev2 = NULL;
 
 
 static void keyctl_ctl_open(const struct hw_module_t* module ,struct keyctl_device_t** dev){
 	module->methods->open(module,KEYCTL_HARDWARE_MODULE_ID,(struct hw_device_t**)dev);
 }
-static void android_debug_JNITest_startBeep(JNIEnv* env, jobject object){
 
+static void android_debug_JNITest_openKey(JNIEnv* env, jobject object){
 	keyctl_module_t* keyctl_module = NULL;
 	jboolean isStart  = false;
 	if(hw_get_module(KEYCTL_HARDWARE_MODULE_ID,(const hw_module_t**)&keyctl_module) == 0){
-		keyctl_ctl_open(&(keyctl_module->common),&keyctl_dev);//////
-		ALOGE("SuCESS");
+		keyctl_ctl_open(&(keyctl_module->common),&keyctl_dev);
+		ALOGE("startkey SuCESS");
 		isStart = true;
 	}else{
-		 ALOGE("JNI test:");
+		 ALOGE("startkey faile");
 		 isStart = false;
-	}
-	
+	}	
+}
 
+static void android_debug_JNITest_startKey(JNIEnv* env, jobject object,jint key){
 	if(keyctl_dev)
-	   keyctl_dev->keysound_enable(keyctl_dev);
-
-	
-
+	   keyctl_dev->key_enable(keyctl_dev,key);
 }
 
-static void android_debug_JNITest_stopBeep(JNIEnv* env, jobject object){
-	ALOGE("STOPAD");
+
+static void android_debug_JNITest_stopKey(JNIEnv* env, jobject object,jint key){
 	if(keyctl_dev){
-		keyctl_dev->keysound_disable(keyctl_dev);
-	}
-	ALOGE("STOPAD11");
+		keyctl_dev->key_disable(keyctl_dev,key);
+	}    
 }
-
 
 
 static JNINativeMethod gMethods[] = {
     /* name, signature, funcPtr */
-    { "startNativeBeep",      "()V",
-            (void*) android_debug_JNITest_startBeep },
-    { "stopNativeBeep",      "()V",
-                     (void*) android_debug_JNITest_stopBeep },
-
+    { "startOpenKey",      "()V",            (void*) android_debug_JNITest_openKey },
+    { "startNativeKey",      "(I)V",            (void*) android_debug_JNITest_startKey },
+    { "stopNativeKey",      "(I)V",             (void*) android_debug_JNITest_stopKey },   
 };
+
 int register_android_iline_ILineBeep(JNIEnv* env)
 {
-    return jniRegisterNativeMethods(env, "android/iline/ILineBeep",
-        gMethods, NELEM(gMethods));
+    return jniRegisterNativeMethods(env, "android/iline/ILineBeep",    gMethods, NELEM(gMethods));
 }
 
-/*
-#if 0
- trampoline into C++ 
-extern "C"
-int register_android_debug_JNITest_C(JNIEnv* env)
-{
-    return android::register_android_debug_JNITest(env);
-}
-#endif*/
-
-}; // namespace android
-
+}; 
 

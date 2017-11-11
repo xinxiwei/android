@@ -343,7 +343,7 @@ int spi_add_device(struct spi_device *spi)
 	int status;
 
 
-        printk(KERN_DEBUG "spi->chip_select = %d , spi->master->num_chipselect = %d\n",spi->chip_select,spi->master->num_chipselect);
+        //printk(KERN_DEBUG "spi->chip_select = %d , spi->master->num_chipselect = %d\n",spi->chip_select,spi->master->num_chipselect);
 	/* Chipselects are numbered 0..max; validate. */
 	if (spi->chip_select >= spi->master->num_chipselect) {
 		dev_err(dev, "cs%d >= max %d\n",
@@ -454,12 +454,12 @@ static void spi_match_master_to_boardinfo(struct spi_master *master,
 {
 	struct spi_device *dev;
 
-        printk("get into function ---> spi_match_master_to_boardinfo \n");
+        //printk("get into function ---> spi_match_master_to_boardinfo \n");
 
-        printk("master->bus_num = %d , bi->bus_num = %d \n",master->bus_num,bi->bus_num);
+        //printk("master->bus_num = %d , bi->bus_num = %d \n",master->bus_num,bi->bus_num);
 	if (master->bus_num != bi->bus_num)
 		return;
-        printk("spi_match_master_to_boardinfo--->step1 \n");
+        //printk("spi_match_master_to_boardinfo--->step1 \n");
 	dev = spi_new_device(master, bi);
 	if (!dev)
 		dev_err(master->dev.parent, "can't create new device for %s\n",
@@ -498,7 +498,7 @@ spi_register_board_info(struct spi_board_info const *info, unsigned n)
 	for (i = 0; i < n; i++, bi++, info++) {
 		struct spi_master *master;
 
-                printk("spi.c--->spi_register_board_info \n");
+        //printk("spi.c--->spi_register_board_info \n");
 
 		memcpy(&bi->board_info, info, sizeof(*info));
 		mutex_lock(&board_lock);

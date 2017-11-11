@@ -25,26 +25,30 @@
 #define SABRESD_GPS_EN	        IMX_GPIO_NR(3, 0)
 #define SABRESD_WIFI_PWN	    IMX_GPIO_NR(6, 16)
 
-#define SABRESD_YELLOW_LED      IMX_GPIO_NR(6, 15)
+/* #define SABRESD_YELLOW_LED      IMX_GPIO_NR(6, 15)
 #define SABRESD_GREEN_LED       IMX_GPIO_NR(7, 8)
-#define SABRESD_RED_LED         IMX_GPIO_NR(3, 19)
+#define SABRESD_RED_LED         IMX_GPIO_NR(3, 19) */
 //#define SABRESD_3V3_EN          IMX_GPIO_NR(6, 22)
 #define SABRESD_3V3_EN          IMX_GPIO_NR(1, 9)
 
+
 #define SABRESD_2V5_EN          IMX_GPIO_NR(6, 17)
 #define SABRESD_1V2_EN          IMX_GPIO_NR(6, 18)
-#define SABRESD_KYB_LEDEN       IMX_GPIO_NR(6, 11)
+//#define SABRESD_KYB_LEDEN       IMX_GPIO_NR(6, 11)
 #define SABRESD_FPGA_RESET      IMX_GPIO_NR(2, 5)
 
 #define GPS_CTR          (1)
 #define WIFI_CTR         (2)
-#define YELLOW_LED_CTR   (3)
-#define GREEN_LED_CTR    (4)
-#define RED_LED_CTR      (5)
+
+/* #define YELLOW_LED_CTR   (13)
+#define GREEN_LED_CTR    (14)
+#define RED_LED_CTR      (15) */
+
 #define FPGA_3V3_CTR     (6)
 #define FPGA_2V5_CTR     (7)
 #define FPGA_1V2_CTR     (8)
-#define KB_BL_CTR        (9)
+//#define KB_BL_CTR        (9)
+
 #define FPGA_RESET       (10)
 static struct class *gpioctr_class;  
 struct cdev_imx6q {  
@@ -60,17 +64,17 @@ static int imx6q_gpio_status[10] = { 0 };  //gpio控制的状态标志位
 
 static int imx6q_gpio_open(struct inode *inode,struct file *file)
 {
-    printk(KERN_INFO "get int funticon---> imx6q_gpio_open !\n");
+    //printk(KERN_INFO "get int funticon---> imx6q_gpio_open !\n");
 
     gpio_direction_input(SABRESD_GPS_EN);
     //gpio_direction_input(SABRESD_WIFI_PWN);
-    gpio_direction_input(SABRESD_YELLOW_LED);
+   /*  gpio_direction_input(SABRESD_YELLOW_LED);
     gpio_direction_input(SABRESD_GREEN_LED);
-    gpio_direction_input(SABRESD_RED_LED);
+    gpio_direction_input(SABRESD_RED_LED); */
     gpio_direction_input(SABRESD_3V3_EN);
     gpio_direction_input(SABRESD_2V5_EN);
     gpio_direction_input(SABRESD_1V2_EN);
-    gpio_direction_input(SABRESD_KYB_LEDEN);
+    //gpio_direction_input(SABRESD_KYB_LEDEN);
     gpio_direction_input(SABRESD_FPGA_RESET);
     return 0;
 }
@@ -86,13 +90,13 @@ static void imx6q_gpio_close(struct inode* i_node,struct file* filp)
     printk(KERN_INFO "close init \n");  
     gpio_free(SABRESD_GPS_EN);      //释放  
     //gpio_free(SABRESD_WIFI_PWN);    //释放 
-    gpio_free(SABRESD_YELLOW_LED);
-    gpio_free(SABRESD_GREEN_LED);
-    gpio_free(SABRESD_RED_LED);
+    //gpio_free(SABRESD_YELLOW_LED);
+    //gpio_free(SABRESD_GREEN_LED);
+    //gpio_free(SABRESD_RED_LED);
     gpio_free(SABRESD_3V3_EN);
     gpio_free(SABRESD_2V5_EN);
     gpio_free(SABRESD_1V2_EN);
-    gpio_free(SABRESD_KYB_LEDEN);
+    //gpio_free(SABRESD_KYB_LEDEN);
     gpio_free(SABRESD_FPGA_RESET);
     //imx6q_gpio_release_fasync(-1, filp, 0);
     return ;  
@@ -119,8 +123,7 @@ static void imx6q_gpio_close(struct inode* i_node,struct file* filp)
 static int imx6q_ioctl(struct file* filp,unsigned int cmd,unsigned long argv) 
 {  
     int err = 0;
-    printk("GPIO:ioctl running....\n");
-     
+    //printk("imx6q_ioctl_gpio cmd = %d, argv = %d\r\n",cmd,argv); 
     switch(cmd){
         case GPS_CTR:
             if(argv>0){
@@ -134,6 +137,7 @@ static int imx6q_ioctl(struct file* filp,unsigned int cmd,unsigned long argv)
                   printk("GPS control pin turn on!\r\n");
             }
             break;
+			
        case WIFI_CTR:
             if(argv>0){
                 //err = gpio_direction_output(SABRESD_WIFI_PWN, HIGH);
@@ -146,72 +150,78 @@ static int imx6q_ioctl(struct file* filp,unsigned int cmd,unsigned long argv)
             }
             break; 
 
-       case YELLOW_LED_CTR:
+			
+			
+      /*  case YELLOW_LED_CTR:
             if(argv>0){
                 err = gpio_direction_output(SABRESD_YELLOW_LED, LOW);
-                printk("yellow_led control pin turn off!\r\n");
+                printk("yellow_led control pin turn on!\r\n");
             }else{
                 err = gpio_direction_output(SABRESD_YELLOW_LED, HIGH);
-                printk("yellow_led control pin turn on!\r\n");
+                printk("yellow_led control pin turn off!\r\n");
             }
-            //kill_fasync(&fasync_queue,SIGIO,POLL_IN);
             break;
+			
       case GREEN_LED_CTR:
             if(argv>0){
                 err = gpio_direction_output(SABRESD_GREEN_LED, LOW);
-                //err = gpio_set_value(SABRESD_GREEN_LED,0x01);
-                printk("green_led control pin turn off!\r\n");
+                printk("green_led control pin turn on!\r\n");
             }else{
                 err = gpio_direction_output(SABRESD_GREEN_LED, HIGH);
-                //err = gpio_set_value(SABRESD_GREEN_LED,0x00);
-                printk("green_led control pin turn on!\r\n");
+                printk("green_led control pin turn off!\r\n");
             }
             break;
+			
       case RED_LED_CTR:
             if(argv>0){
                 err = gpio_direction_output(SABRESD_RED_LED, LOW);
-                //err = gpio_set_value(SABRESD_RED_LED,0x01);
-                printk("red_led control pin turn off!\r\n");
+                printk("red_led control pin turn on!\r\n");
             }else{
                 err = gpio_direction_output(SABRESD_RED_LED, HIGH);
-                //err = gpio_set_value(SABRESD_RED_LED,0x00);
-                printk("red_led control pin turn on!\r\n");
+                printk("red_led control pin turn off!\r\n");
             }
-            break;
+            break; */
+	
+
+
+	
      case FPGA_3V3_CTR:
             if(argv>0){
                 err = gpio_direction_output(SABRESD_3V3_EN, HIGH);
                 //err = gpio_set_value(SABRESD_3V3_EN,0x01);
-                printk("fpga_3v3 control pin turn on!\r\n");
+                //printk("fpga_3v3 control pin turn on!\r\n");
             }else{
                 err = gpio_direction_output(SABRESD_3V3_EN, LOW);
                 //err = gpio_set_value(SABRESD_3V3_EN,0x00);
-                printk("fpga_3v3 control pin turn off!\r\n");
+                //printk("fpga_3v3 control pin turn off!\r\n");
             }
             break;
+			
      case FPGA_2V5_CTR:
             if(argv>0){
                 err = gpio_direction_output(SABRESD_2V5_EN, LOW);
                 //err = gpio_set_value(SABRESD_2V5_EN,0x01);
-                printk("fpga_2v5 control pin turn on!\r\n");
+                //printk("fpga_2v5 control pin turn on!\r\n");
             }else{
                 err = gpio_direction_output(SABRESD_2V5_EN, HIGH);
                 //err = gpio_set_value(SABRESD_2V5_EN,0x00);
-                printk("fpga_2v5 control pin turn off!\r\n");
+                //printk("fpga_2v5 control pin turn off!\r\n");
             }
             break;
+			
      case FPGA_1V2_CTR:
             if(argv>0){
                 err = gpio_direction_output(SABRESD_1V2_EN, HIGH);
                 //err = gpio_set_value(SABRESD_1V2_EN,0x01);
-                printk("fpga_1v2 control pin turn on!\r\n");
+                //printk("fpga_1v2 control pin turn on!\r\n");
             }else{
                 err = gpio_direction_output(SABRESD_1V2_EN, LOW);
                 //err = gpio_set_value(SABRESD_1V2_EN,0x00);
-                printk("fpga_1v2 control pin turn off!\r\n");
+                //printk("fpga_1v2 control pin turn off!\r\n");
             }
             break;
-     case KB_BL_CTR:
+			
+    /*  case KB_BL_CTR:
             if(argv>0){
                 err = gpio_direction_output(SABRESD_KYB_LEDEN, LOW);
                 //err = gpio_set_value(SABRESD_KYB_LEDEN,0x01);
@@ -221,18 +231,20 @@ static int imx6q_ioctl(struct file* filp,unsigned int cmd,unsigned long argv)
                 //err = gpio_set_value(SABRESD_KYB_LEDEN,0x00);
                 printk("keyboard_backlight control pin turn on!\r\n");
             }
-            break;
+            break; */
+			
       case FPGA_RESET:
             if(argv>0){
                 err = gpio_direction_output(SABRESD_FPGA_RESET, LOW);
                 //err = gpio_set_value(SABRESD_FPGA_RESET,0x01);
-                printk("SABRESD_FPGA_RESET control pin turn on!\r\n");
+                //printk("SABRESD_FPGA_RESET control pin turn on!\r\n");
             }else{
                 err = gpio_direction_output(SABRESD_FPGA_RESET, HIGH);
                 //err = gpio_set_value(SABRESD_FPGA_RESET,0x00);
-                printk("SABRESD_FPGA_RESET control pin turn off!\r\n");
+                //printk("SABRESD_FPGA_RESET control pin turn off!\r\n");
             }
             break;  
+			
         default:
             printk("cmd is not exist\n");
             return -1;
@@ -251,7 +263,7 @@ struct file_operations fops={
 
 static int imx6q_gpioctl_init(void)  
 {  
-    printk(KERN_INFO "init .... \n");  
+    //printk(KERN_INFO "init .... \n");  
     dev_t dev_no;  
     int result,err; 
 
@@ -308,9 +320,8 @@ static void imx6q_dev_exit(void)
 static void imx6q_gpio_probe(void)
 {
     int err;
-
-      
-    printk("get into function -->imx6q_gpio_probe! \n");
+	
+    //printk("get into function -->imx6q_gpio_probe! \n");
     err = gpio_request(SABRESD_GPS_EN,"GPS_POWER_CTR");   
     if(err<0)  
     {  
@@ -323,7 +334,7 @@ static void imx6q_gpio_probe(void)
     //    printk(KERN_INFO "WIFI_POWER_CTR gpio request faile \n");  
     //    return err;  
     //}      
-    err = gpio_request(SABRESD_YELLOW_LED,"YELLOW_LED_CTR");   
+  /*   err = gpio_request(SABRESD_YELLOW_LED,"YELLOW_LED_CTR");   
     if(err<0)  
     {  
         printk(KERN_INFO "YELLOW_LED_CTR gpio request faile \n");  
@@ -340,7 +351,7 @@ static void imx6q_gpio_probe(void)
     {  
         printk(KERN_INFO "RED_LED_CTR gpio request faile \n");  
         return err;  
-    }    
+    } */    
     err = gpio_request(SABRESD_3V3_EN,"FPGA_3V3_CTR");   
     if(err<0)  
     {  
@@ -363,12 +374,12 @@ static void imx6q_gpio_probe(void)
     } 
     gpio_direction_output(SABRESD_1V2_EN, LOW);
 
-    err = gpio_request(SABRESD_KYB_LEDEN,"KYB_LED_CTR");   
+   /*  err = gpio_request(SABRESD_KYB_LEDEN,"KYB_LED_CTR");   
     if(err<0)  
     {  
         printk(KERN_INFO "KYB_LED_CTR gpio request faile \n");  
         return err;  
-    } 
+    }  */
     err = gpio_request(SABRESD_FPGA_RESET,"FPGA_RESET");   
     if(err<0)  
     {  
@@ -384,13 +395,13 @@ static  void  imx6q_gpio_remove(void)
 {
     //gpio_free(SABRESD_WIFI_PWN);//释放GPIO引脚
     gpio_free(SABRESD_GPS_EN);
-    gpio_free(SABRESD_YELLOW_LED);
-    gpio_free(SABRESD_GREEN_LED);
-    gpio_free(SABRESD_RED_LED);
+    //gpio_free(SABRESD_YELLOW_LED);
+    //gpio_free(SABRESD_GREEN_LED);
+    //gpio_free(SABRESD_RED_LED);
     gpio_free(SABRESD_3V3_EN);
     gpio_free(SABRESD_2V5_EN);
     gpio_free(SABRESD_1V2_EN);
-    gpio_free(SABRESD_KYB_LEDEN);
+    //gpio_free(SABRESD_KYB_LEDEN);
     gpio_free(SABRESD_FPGA_RESET);
     imx6q_dev_exit();
 }
@@ -508,7 +519,7 @@ static ssize_t imx6q_gpio_write(struct device *dev, struct device_attribute *att
         }
     }
 
-    else if(!strcmp(attr->attr.name, "yellowled_pwn"))
+    /* else if(!strcmp(attr->attr.name, "yellowled_pwn"))
     {
         if(on)
         {
@@ -553,19 +564,19 @@ static ssize_t imx6q_gpio_write(struct device *dev, struct device_attribute *att
             imx6q_gpio_status[4] = HIGH;
         }
     }
-
+ */
     else if(!strcmp(attr->attr.name, "fpga3v3_pwn"))
     {
         if(on)
         {
             gpio_direction_output(SABRESD_3V3_EN, HIGH);
-            printk("fpga3v3 control pin turn off!\r\n");
+            //printk("fpga3v3 control pin turn off!\r\n");
             imx6q_gpio_status[5] = HIGH;
         }
         else
         {
             gpio_direction_output(SABRESD_3V3_EN,LOW);
-            printk("fpga3v3 control pin turn on!\r\n");
+           // printk("fpga3v3 control pin turn on!\r\n");
             imx6q_gpio_status[5] = LOW;
         }
     }
@@ -574,13 +585,13 @@ static ssize_t imx6q_gpio_write(struct device *dev, struct device_attribute *att
         if(on)
         {
             gpio_direction_output(SABRESD_2V5_EN, LOW);
-            printk("fpga2v5 control pin turn off!\r\n");
+            //printk("fpga2v5 control pin turn off!\r\n");
             imx6q_gpio_status[6] = LOW;
         }
         else
         {
             gpio_direction_output(SABRESD_2V5_EN,HIGH);
-            printk("fpga2v5 control pin turn on!\r\n");
+            //printk("fpga2v5 control pin turn on!\r\n");
             imx6q_gpio_status[6] = HIGH;
         }
     }
@@ -589,17 +600,17 @@ static ssize_t imx6q_gpio_write(struct device *dev, struct device_attribute *att
         if(on)
         {
             gpio_direction_output(SABRESD_1V2_EN, HIGH);
-            printk("WIFI control pin turn off!\r\n");
+            //printk("WIFI control pin turn off!\r\n");
             imx6q_gpio_status[7] = HIGH;
         }
         else
         {
             gpio_direction_output(SABRESD_1V2_EN,LOW);
-            printk("WIFI control pin turn on!\r\n");
+            //printk("WIFI control pin turn on!\r\n");
             imx6q_gpio_status[7] = LOW;
         }
     }
-    else if(!strcmp(attr->attr.name, "keyboardbl_pwn"))
+   /*  else if(!strcmp(attr->attr.name, "keyboardbl_pwn"))
     {
         if(on)
         {
@@ -613,20 +624,20 @@ static ssize_t imx6q_gpio_write(struct device *dev, struct device_attribute *att
             printk("keyboard_backlight control pin turn on!\r\n");
             imx6q_gpio_status[8] = HIGH;
         }
-    }
+    } */
    
      else if(!strcmp(attr->attr.name, "fpga_reset"))
     {
         if(on)
         {
             gpio_direction_output(SABRESD_FPGA_RESET, LOW);
-            printk("fpga_reset control pin turn on!\r\n");
+           // printk("fpga_reset control pin turn on!\r\n");
             imx6q_gpio_status[9] = LOW;
         }
         else
         {
             gpio_direction_output(SABRESD_FPGA_RESET,HIGH);
-            printk("fpga_reset control pin turn off!\r\n");
+           // printk("fpga_reset control pin turn off!\r\n");
             imx6q_gpio_status[9] = HIGH;
         }
     }
@@ -634,9 +645,9 @@ static ssize_t imx6q_gpio_write(struct device *dev, struct device_attribute *att
  }
 static DEVICE_ATTR(gps_pwn,        0666,  imx6q_gpio_read, imx6q_gpio_write);
 static DEVICE_ATTR(wifi_pwn,       0666,  imx6q_gpio_read, imx6q_gpio_write);
-static DEVICE_ATTR(yellowled_pwn,  0666,  imx6q_gpio_read, imx6q_gpio_write);
+/* static DEVICE_ATTR(yellowled_pwn,  0666,  imx6q_gpio_read, imx6q_gpio_write);
 static DEVICE_ATTR(greenled_pwn,   0666,  imx6q_gpio_read, imx6q_gpio_write);
-static DEVICE_ATTR(redled_pwn,     0666,  imx6q_gpio_read, imx6q_gpio_write);
+static DEVICE_ATTR(redled_pwn,     0666,  imx6q_gpio_read, imx6q_gpio_write); */
 static DEVICE_ATTR(fpga3v3_pwn,    0666,  imx6q_gpio_read, imx6q_gpio_write);
 static DEVICE_ATTR(fpga2v5_pwn,    0666,  imx6q_gpio_read, imx6q_gpio_write);
 static DEVICE_ATTR(fpga1v2_pwn,    0666,  imx6q_gpio_read, imx6q_gpio_write);
@@ -646,9 +657,9 @@ static DEVICE_ATTR(fpga_reset    , 0666,  imx6q_gpio_read, imx6q_gpio_write);
 static struct attribute *imx6q_gpio_sysfs_entries[] = {
 	&dev_attr_gps_pwn.attr,
         &dev_attr_wifi_pwn.attr,       
-        &dev_attr_yellowled_pwn.attr,
+     /*    &dev_attr_yellowled_pwn.attr,
 	&dev_attr_greenled_pwn.attr,
-        &dev_attr_redled_pwn.attr,
+        &dev_attr_redled_pwn.attr, */
         &dev_attr_fpga3v3_pwn.attr,
         &dev_attr_fpga2v5_pwn.attr,
         &dev_attr_fpga1v2_pwn.attr,
@@ -690,7 +701,7 @@ static struct platform_device imx6q_gpio_device = {
 static int __devinit imx6q_gpio_init(void)
 {
 	int ret;
-	printk("---------imx6q_gpio_init-----------");
+	printk("---------imx6q_gpio_init-----------\n");
 	ret = platform_device_register(&imx6q_gpio_device);
 	if(ret)
 		printk("imx6q_gpio device register error\r\n");

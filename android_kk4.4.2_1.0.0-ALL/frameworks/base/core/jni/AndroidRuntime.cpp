@@ -136,6 +136,8 @@ extern int register_android_iline_ILineGatherModule(JNIEnv* env);
 extern int register_android_iline_ILineVibrationModule(JNIEnv* env);
 extern int register_android_iline_ILineBeep(JNIEnv* env);
 extern int register_android_iline_ILineLight(JNIEnv* env);
+extern int register_android_iline_ILineBackLight(JNIEnv* env);
+
 extern int register_android_nio_utils(JNIEnv* env);
 extern int register_android_text_format_Time(JNIEnv* env);
 extern int register_android_os_Debug(JNIEnv* env);
@@ -1101,6 +1103,8 @@ static const RegJNIRec gRegJNI[] = {
     REG_JNI(register_android_iline_ILineVibrationModule),
     REG_JNI(register_android_iline_ILineBeep),
     REG_JNI(register_android_iline_ILineLight),
+	REG_JNI(register_android_iline_ILineBackLight),
+	
     REG_JNI(register_com_android_internal_os_RuntimeInit),
     REG_JNI(register_android_os_SystemClock),
     REG_JNI(register_android_util_EventLog),

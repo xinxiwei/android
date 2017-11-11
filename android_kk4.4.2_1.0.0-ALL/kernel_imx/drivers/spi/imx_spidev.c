@@ -18,6 +18,7 @@
  * Boston, MA  02110-1301, USA.
  */
 
+ 
 #include <linux/clk.h>
 #include <linux/completion.h>
 #include <linux/delay.h>
@@ -123,8 +124,8 @@ struct spidev_buffer{
 typedef struct spidev_data_frame {
   u32 paddress;   
   u32 *vaddress;  
-  int index;    
-  struct spidev_buffer  buffer;
+  //int index;    
+  //struct spidev_buffer  buffer;
   struct scatterlist	rx_sgl;
   struct list_head      queue;
 }spidev_data_frame_t;
@@ -143,15 +144,15 @@ struct spi_imx_devtype_data {
 
 struct spi_imx_data {
 	struct platform_device *pdev;
-        spinlock_t lock;
-        dev_t devt;
+    spinlock_t lock;
+    dev_t devt;
 	struct completion xfer_done;
 	void *base;
 	int irq;
 	struct clk *clk;
 	unsigned long spi_clk;
-        spinlock_t  spi_lock;
-        int bus_num;
+    spinlock_t  spi_lock;
+    int bus_num;
 	int *chipselect;
 
 	int count;
@@ -174,23 +175,23 @@ struct spi_imx_data {
 	struct dma_async_tx_descriptor *rx_desc;
 	struct device *dev;
 
-        u8 work_queue_state;
-        u8 ready_queue_state;
-        resource_size_t mapbase; 
-        void __iomem *membase; 
+    u8 work_queue_state;
+    u8 ready_queue_state;
+    resource_size_t mapbase; 
+    void __iomem *membase; 
          
-        struct fasync_struct *fasync_queue;
+    struct fasync_struct *fasync_queue;
        
-        struct list_head    device_entry; 
+    struct list_head    device_entry; 
 
-        spidev_data_frame_t rxsegnums[DMA_BUF_SZIE]; 
-        struct list_head ready_q; 
-  	struct list_head done_q;  
+    spidev_data_frame_t rxsegnums[DMA_BUF_SZIE]; 
+    struct list_head ready_q; 
+  	//struct list_head done_q;  
   	struct list_head working_q;
        
-        u32 rxdma_buf_size ;
+    u32 rxdma_buf_size ;
 	u32 num_rxdma_bufs ;
-        u16 rx_dma_size;
+    u16 rx_dma_size;
 	struct spi_imx_devtype_data devtype_data;
 };
 
@@ -200,13 +201,19 @@ static DEFINE_MUTEX(device_list_lock);
 static int spidev_rxstreamon(struct spi_imx_data *spi_imx);
 static void spi_imx_dma_rx_callback(void * data);
 
-static int spidev_alloc_mem_rxframe(struct spi_imx_data *spi_devdata );
-static int spidev_init_rxsegnums_buf(struct spi_imx_data *spi_devdata);
+static int  spidev_alloc_mem_rxframe(struct spi_imx_data *spi_devdata );
+static int  spidev_init_rxsegnums_buf(struct spi_imx_data *spi_devdata);
 static void spidev_free_mem_rxframe(struct spi_imx_data *spi_imx);
+static void spidev_deinit_rxframe_buf(struct spi_imx_data  *spi_devdata);
 
 
 
-#define SPI_IMX2_3_CTRL		0x08
+static int work_read_count = 0;
+
+volatile u8 user_stop_dma = 0;
+volatile u8 dma_finished  = 0;
+
+#define SPI_IMX2_3_CTRL		        0x08
 #define SPI_IMX2_3_CTRL_ENABLE		(1 <<  0)
 #define SPI_IMX2_3_CTRL_XCH		(1 <<  2)
 #define SPI_IMX2_3_CTRL_MODE_MASK	(0xf << 4)
@@ -295,7 +302,7 @@ static void __maybe_unused spi_imx2_3_slave_intctrl(struct spi_imx_data *spi_imx
         //printk("spi_imx2_3_slave_intctrl:val = %d \n",val);
 
 	writel(val, spi_imx->membase + SPI_IMX2_3_INT);
-	//printk("get into function spi_imx2_3_slave_intctrl&&&&&&&&&&&&&&&&&&&&&&&&& !!!\n");
+	//printk("get into function spi_imx2_3_slave_intctrl!!!\n");
 }
 
 static void __maybe_unused spi_imx2_3_slave_trigger(struct spi_imx_data *spi_imx)
@@ -303,10 +310,9 @@ static void __maybe_unused spi_imx2_3_slave_trigger(struct spi_imx_data *spi_imx
 	u32 dma=0;		
 	
 
-        dma=SPI_IMX2_3_DMA_RXDEN|
-			(31<<SPI_IMX2_3_DMA_RX_TH_OFFSET);	        
+    dma=SPI_IMX2_3_DMA_RXDEN|(31<<SPI_IMX2_3_DMA_RX_TH_OFFSET);	        
 	writel(dma, spi_imx->membase + SPI_IMX2_3_DMA_REG);
-        //printk("get into function spi_imx2_3_slave_triggerl !!!\n");
+    //printk("get into function spi_imx2_3_slave_triggerl !!!\n");
 		
 	return;
 }
@@ -358,16 +364,20 @@ static int __maybe_unused spi_imx2_3_slave_config(struct spi_imx_data *spi_imx,
 static int __maybe_unused spi_imx2_3_slave_rx_available(struct spi_imx_data *spi_imx)
 {
 	//printk("get into function spi_imx2_3_slave_rx_available !!!\n");
-        int rc=readl(spi_imx->membase + SPI_IMX2_3_STAT) & SPI_IMX2_3_STAT_RR;
+    int rc=readl(spi_imx->membase + SPI_IMX2_3_STAT) & SPI_IMX2_3_STAT_RR;
 	return rc;
 }
 
 static void  __maybe_unused spi_imx2_3_slave_reset(struct spi_imx_data *spi_imx)
 {
 	//printk("get into function spi_imx2_3_slave_reset !!!\n");
-        /* drain receive buffer */
+    /* drain receive buffer */
+       
+#if 0    
 	while (spi_imx2_3_slave_rx_available(spi_imx))
 		readl(spi_imx->membase + MXC_CSPIRXDATA);
+#endif	
+	writel(0, spi_imx->membase + SPI_IMX2_3_CTRL); 
 }
 
 
@@ -378,16 +388,17 @@ static void  __maybe_unused spi_imx2_3_slave_reset(struct spi_imx_data *spi_imx)
 static struct spi_imx_devtype_data spi_imx_devtype_data[] __devinitdata = {
 
 
-[SPI_IMX_VER_2_3_SLAVE] = {
+	[SPI_IMX_VER_2_3_SLAVE] = {
 		.intctrl = spi_imx2_3_slave_intctrl,
-		.config = spi_imx2_3_slave_config,
+		.config  = spi_imx2_3_slave_config,
 		.trigger = spi_imx2_3_slave_trigger,
 		.rx_available = spi_imx2_3_slave_rx_available,
-		.reset = spi_imx2_3_slave_reset,
+		.reset   = spi_imx2_3_slave_reset,
 		.fifosize = 64,
-	},
+		},
 
 };
+
 
 static int spi_imx_dma_init(struct spi_imx_data	*spi_imx);
  
@@ -403,9 +414,7 @@ static int spidev_rxdma_start(struct spi_imx_data *spi_imx)
 	spidev_data_frame_t *frame;
 
 	chan = spi_imx->dma_chan_rx;
-
-	//printk("get into spidev_rxdma_start---> funciton !!! \n");     
-
+	
 	frame = list_entry(spi_imx->working_q.next, spidev_data_frame_t, queue);
 
 	sg = &frame->rx_sgl;
@@ -415,17 +424,21 @@ static int spidev_rxdma_start(struct spi_imx_data *spi_imx)
 	
     spin_lock_irqsave(&spi_imx->lock, start_flag);
 	
+	
 	desc=chan->device->device_prep_slave_sg(chan,sg,1,DMA_DEV_TO_MEM,0);
 
 	if(!desc){
-		printk("device_prep_slave_sg---> Can not init dma descriptor \n");
+		printk("spidev_rxdma_start---> Can not init dma descriptor111 \n");
 		spin_unlock_irqrestore(&spi_imx->lock, start_flag);
 		return -1;
 	}
-    
+
+#if 1
+    work_read_count++;
+#endif    
+	
 	spin_unlock_irqrestore(&spi_imx->lock, start_flag);
-	
-	
+		
 	desc->callback=spi_imx_dma_rx_callback;
 
 	desc->callback_param=spi_imx;
@@ -434,7 +447,7 @@ static int spidev_rxdma_start(struct spi_imx_data *spi_imx)
 
 	dmaengine_submit(desc);
 
-	dma_async_issue_pending(spi_imx->dma_chan_rx);
+	//dma_async_issue_pending(spi_imx->dma_chan_rx);
 	
 	spin_unlock_irqrestore(&spi_imx->lock, start_flag);
 
@@ -445,31 +458,29 @@ static int spidev_rxdma_start(struct spi_imx_data *spi_imx)
 
 static void spidev_free_mem_rxframe(struct spi_imx_data *spi_imx)
 {
-      int i = 0;
-      u32 *ptr = NULL;
-      struct scatterlist *sg;
+    int i = 0;
+    u32 *ptr = NULL;
+    struct scatterlist *sg;
 
 
-      for (i = 0; i < DMA_BUF_SZIE; i ++) {
+    for (i = 0; i < DMA_BUF_SZIE; i ++) {
 
-    	    ptr = spi_imx->rxsegnums[i].vaddress;
+    	ptr = spi_imx->rxsegnums[i].vaddress;
             
-            sg = &spi_imx->rxsegnums[i].rx_sgl;
-            if (ptr != NULL){
+        sg = &spi_imx->rxsegnums[i].rx_sgl;
+        if (ptr != NULL){
                  
-                 dma_unmap_sg(spi_imx->dev, sg, 1, DMA_FROM_DEVICE);
+            dma_unmap_sg(spi_imx->dev, sg, 1, DMA_FROM_DEVICE);
 
-                 //printk("free %d rxframe.\n", i);
+            //printk("free %d rxframe.\n", i);
 
-                 kfree(spi_imx->rxsegnums[i].vaddress);
+            kfree(spi_imx->rxsegnums[i].vaddress);
 
-                 spi_imx->rxsegnums[i].vaddress = NULL;
-            }
-      }
-      return;
+            spi_imx->rxsegnums[i].vaddress = NULL;
+        }
+    }
+    return;
 }
-
-
 
 
 static u32 rec_finsh_count = 0;
@@ -479,12 +490,11 @@ static u32 rec_finsh_count = 0;
 static imx6q_spi_slave_release_fasync(int fd,struct file *filp,int mode)
 {
 
-      struct spi_imx_data *dev = filp->private_data;
+    struct spi_imx_data *dev = filp->private_data;
 
-      fasync_helper(fd,filp,mode,&dev->fasync_queue);
+    fasync_helper(fd,filp,mode,&dev->fasync_queue);
 }  
 
-//fasync方法的实现
 static int imx6q_spi_slave_fasync(int fd, struct file * filp, int on) 
 {
     int retval;  
@@ -507,41 +517,34 @@ static void spi_imx_dma_rx_callback(void * data)
 {
 	struct spi_imx_data *spi_imx=data;
 	u32 val = 0;
-	u32 i,ret ;
+	//u32 i,ret ;
 	spidev_data_frame_t *done_frame;
-	struct scatterlist *sg;
+	//struct scatterlist *sg;
 	unsigned long flag;
-	u32 *p;
+	//u32 *p;
 
-
+	
 	//spin_lock_irqsave(&spi_imx->lock, flag);
 
 	val = readl(spi_imx->membase + SPI_IMX2_3_STAT);
 
 	if(val & SPI_IMX2_3_STAT_RO){
 	
-		 printk(" rx FIFO overflow!! ,rec_finsh_count = %d\n",rec_finsh_count);
+		printk("rx FIFO overflow!! ,rec_finsh_count = %d\n",rec_finsh_count);
 	 
 	}
-
+#if 1	
+    if(user_stop_dma){
+		
+		dma_finished = 1;
+		spi_imx->devtype_data.intctrl(spi_imx, 0);
+		spi_imx2_3_slave_disable_dma(spi_imx);
+		
+		return;
+	}
+#endif	
 	done_frame = list_entry(spi_imx->working_q.next, spidev_data_frame_t,queue);	
-
-#if 0  
-	printk("get into function spi_imx_dma_rx_callback !! \n");
-	for ( i = 0; i<1024 ; i++ ){
-		 cmpdata[i] = i;
-	}
-	memcpy(rectestdata,done_frame->vaddress,60*1024);
-	for ( i = 0; i<15;i++){    
-		 ret = memcmp(&rectestdata[i*1024],cmpdata,4096);
-		 if(ret != 0){
-			 printk("receive data fail i = %d \n",i);
-		 }
-	}
-	printk("receive data ok  \n");
-#else      
-	
-				 
+			 
 	//sg = &done_frame->rx_sgl;
 
 	//dma_sync_sg_for_cpu(spi_imx->dev, sg, 1, DMA_FROM_DEVICE);
@@ -554,8 +557,6 @@ static void spi_imx_dma_rx_callback(void * data)
 
 	//printk("spi_imx_dma_rx_callback function  -->step:2!!\n");
 	
-	//xiwei
-	//printk("xinxiwei 111111");
 	
 	list_add_tail(&done_frame->queue, &spi_imx->ready_q);
 
@@ -563,13 +564,13 @@ static void spi_imx_dma_rx_callback(void * data)
 
 	if (list_empty(&spi_imx->working_q)){
 
-		  printk("list working_q empty !!\n");  /*add text*/
+		printk("write list working_q empty 222 !!\n");  /*add text*/
 		  
-		  spi_imx->work_queue_state = 1;
+		spi_imx->work_queue_state = 1;
 
-		  spin_unlock_irqrestore(&spi_imx->lock, flag);
+		//spin_unlock_irqrestore(&spi_imx->lock, flag);
 
-		  return ;
+		return ;
 	}     
 	
 	//spin_unlock_irqrestore(&spi_imx->lock, flag);
@@ -579,16 +580,10 @@ static void spi_imx_dma_rx_callback(void * data)
 	//printk("spi_imx_dma_rx_callback function lauch out signal  -->step:1!!\n"); 
 
 	if(spi_imx->fasync_queue)
-		 kill_fasync(&spi_imx->fasync_queue,SIGIO,POLL_IN);
+		kill_fasync(&spi_imx->fasync_queue,SIGIO,POLL_IN);
 
 	//printk("spi_imx_dma_rx_callback function lauch out signal  -->step:2!!\n"); 
-
-        
-        
-
-        
-#endif
-       
+         
 }
 
 static bool imx_spi_filter(struct dma_chan *chan,void *param)
@@ -613,10 +608,10 @@ static int spi_imx_dma_init(struct spi_imx_data	*spi_imx)
 {
 	dma_cap_mask_t mask;
 	struct imx_dma_data	dma_data;
-        struct dma_slave_config slave_config;
+    struct dma_slave_config slave_config;
 	int ret=0;
 	unsigned long flag;
-        struct dma_chan *chan;
+    struct dma_chan *chan;
 
 	spin_lock_irqsave(&spi_imx->lock, flag);
 	
@@ -649,8 +644,7 @@ static int spi_imx_dma_init(struct spi_imx_data	*spi_imx)
 		printk("spi_imx_dma_setup: dmaengine_slave_config failed ret = %d \n",ret);
 		spin_unlock_irqrestore(&spi_imx->lock, flag);
 		return -EINVAL;
-	}
-	
+	}	
 	spin_unlock_irqrestore(&spi_imx->lock, flag);
 
 	return ret;
@@ -693,7 +687,7 @@ static int spidev_alloc_mem_rxframe(struct spi_imx_data *spi_devdata )
 			return -1;
 		}
 
-                //printk("spidev_alloc_mem_rxframe: ---->one \n"); 
+        //printk("spidev_alloc_mem_rxframe: ---->one \n"); 
              
 		sg = &spi_devdata->rxsegnums[i].rx_sgl;
 
@@ -708,18 +702,16 @@ static int spidev_alloc_mem_rxframe(struct spi_imx_data *spi_devdata )
 			return -EINVAL;
 		}
 		spi_devdata->rxsegnums[i].paddress = sg->dma_address;
+		printk("paddress = 0x%x ,vaddress = 0x%x \n",spi_devdata->rxsegnums[i].paddress,spi_devdata->rxsegnums[i].vaddress);
 
 	}
 
-        spi_devdata->work_queue_state = 0;
-        spi_devdata->ready_queue_state = 0;
+    spi_devdata->work_queue_state  = 0;
+    spi_devdata->ready_queue_state = 0;
 
 	printk("spidev_alloc_mem_rxframe: step--->2 \n"); 
 	return 0;
 }
-
-
-
 
 static void spidev_reset_mem_rxframe(struct spi_imx_data *spi_devdata)
 {
@@ -729,42 +721,42 @@ static void spidev_reset_mem_rxframe(struct spi_imx_data *spi_devdata)
      
      for (i = 0; i < DMA_BUF_SZIE; i++){
 
-          memset(spi_devdata->rxsegnums[i].vaddress,0,60*1024);
+        memset(spi_devdata->rxsegnums[i].vaddress,0,60*1024);
      }
      return;
 
 }
 
-static int spidev_init_rxsegnums_buf(struct spi_imx_data *spi_devdata) //prop时
-{
+static int spidev_init_rxsegnums_buf(struct spi_imx_data *spi_devdata) {
+	
 	int i = 0;
 
 	//unsigned long flag;
 
 	if (!spi_devdata)
 		return -1;
-
-        //printk("go to spidev_init_rxsegnums_buf &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&!!\n");
-
+      
 	for (i = 0; i < DMA_BUF_SZIE; i++) {
-		spi_devdata->rxsegnums[i].buffer.offset = spi_devdata->rxsegnums[i].paddress;
-		spi_devdata->rxsegnums[i].buffer.index = i;
-		spi_devdata->rxsegnums[i].buffer.flags = 0x01;         //SPIDEV_BUF_FLAG_MAPPED
-		spi_devdata->rxsegnums[i].buffer.length = 60*1024;
-		spi_devdata->rxsegnums[i].index = i;
+		//spi_devdata->rxsegnums[i].buffer.offset = spi_devdata->rxsegnums[i].paddress;
+		//spi_devdata->rxsegnums[i].buffer.index = i;
+		//spi_devdata->rxsegnums[i].buffer.flags = 0x01;         //SPIDEV_BUF_FLAG_MAPPED
+		//spi_devdata->rxsegnums[i].buffer.length = 60*1024;
+		//spi_devdata->rxsegnums[i].index = i;
                 
-                //printk("go to spidev_init_rxsegnums_buf --->one ,%d\n",i);
+        //printk("go to spidev_init_rxsegnums_buf --->one ,%d\n",i);
 
 		list_add_tail(&spi_devdata->rxsegnums[i].queue, &spi_devdata->working_q);
 
-                //printk("go to spidev_init_rxsegnums_buf ---->two,%d \n",i);                 
+        //printk("go to spidev_init_rxsegnums_buf ---->two,%d \n",i);                 
 
-		spi_devdata->rxsegnums[i].buffer.flags |= 0x02;       //SPIDEV_BUF_FLAG_QUEUED
+		//spi_devdata->rxsegnums[i].buffer.flags |= 0x02;       //SPIDEV_BUF_FLAG_QUEUED
 	}
 	//printk("spidev_init_rxsegnums_buf: step--->3 \n");
 
-return 0;
+    return 0;
 }
+
+static int dma_enable_count = 0;
 
 static int spidev_rxstreamon(struct spi_imx_data *spi_imx)
 { 
@@ -775,53 +767,62 @@ static int spidev_rxstreamon(struct spi_imx_data *spi_imx)
 	unsigned long flag;
 	spidev_data_frame_t *frame;
 	struct spi_imx_config config;
-                   
-	ret_init_value = spi_imx_dma_init(spi_imx);
-    if(ret_init_value <0)
-    {
-       return -1;
+
+	
+	if(dma_enable_count < 1)
+	{
+	    dma_enable_count++;
+		ret_init_value = spi_imx_dma_init(spi_imx);
+        if(ret_init_value <0)
+        {
+           printk("dma initial fail: step--->0 \n");
+	       return -1;
+	    }
 	}
 	config.bpw = 32;
-	config.speed_hz  = 6500000;//15000000;
+	config.speed_hz  = 6500000;
 	config.mode = 0;
 	config.cs = 0;
 	spi_imx->bpw = 32;               
 	spi_imx->rx_threshold = 31;
-	  
+	  		
+    printk("dma enable: step--->1 \n");
 	//spin_lock_irqsave(&spi_imx->lock, flag);
-								
 	spi_imx->devtype_data.config(spi_imx, &config);
-	
 	//spin_unlock_irqrestore(&spi_imx->lock, flag);
 
-	//printk("spidev_rxstreamon: step--->1 \n"); 	
-
-	//spidev_alloc_mem_rxframe(spi_imx );
-
+	printk("dma enable: step--->2 \n"); 						
+				
+	mdelay(50); 
+#if 1
+	spidev_deinit_rxframe_buf(spi_imx);
 	spidev_init_rxsegnums_buf(spi_imx);
+#endif
 
-	//printk("spidev_rxstreamon: step--->4 \n");
-
+	printk("dma enable: step--->3 \n");	
+    spin_lock_irqsave(&spi_imx->lock, flag); 
+	
 	frame = list_entry(spi_imx->working_q.next, spidev_data_frame_t, queue);
-
-	//printk("spidev_rxstreamon: step--->5 \n");
+    spin_unlock_irqrestore(&spi_imx->lock, flag);
+	printk("dma enable: step--->4 \n");
         
 	sg = &frame->rx_sgl;
-
-    sg->length = 60*1024;
+    printk("paddress = 0x%x ,vaddress = 0x%x \n",frame->paddress,frame->vaddress);
 	
-	spin_lock_irqsave(&spi_imx->lock, flag); 
-
+    sg->length = 60*1024;
+		
+    spin_lock_irqsave(&spi_imx->lock, flag); 
 	desc=spi_imx->dma_chan_rx->device->device_prep_slave_sg(spi_imx->dma_chan_rx,sg,1,DMA_DEV_TO_MEM,0);
         
 	if(!desc){
-		printk("device_prep_slave_sg---> Can not init dma descriptor \n");  
-        spin_unlock_irqrestore(&spi_imx->lock, flag);		
+		printk("spidev_rxstreamon---> Can not init dma descriptor222 \n");  
+        spin_unlock_irqrestore(&spi_imx->lock, flag);
+        mdelay(100);		
 		return -1;
 	}
     spin_unlock_irqrestore(&spi_imx->lock, flag);
 	
-    //printk("spidev_rxstreamon: step--->6 \n");
+    printk("dma enable: step--->5 \n");
 
 	desc->callback=spi_imx_dma_rx_callback;
         
@@ -831,16 +832,14 @@ static int spidev_rxstreamon(struct spi_imx_data *spi_imx)
 	
 	dmaengine_submit(desc);
 
-	dma_async_issue_pending(spi_imx->dma_chan_rx);
-	
-	spin_unlock_irqrestore(&spi_imx->lock, flag);
-         
+	//dma_async_issue_pending(spi_imx->dma_chan_rx);
+	     
 	/* enable rx/tx DMA transfer */
 	spi_imx->devtype_data.trigger(spi_imx);
+	
+	spin_unlock_irqrestore(&spi_imx->lock, flag);
   
-	//spin_unlock_irqrestore(&spi_imx->lock, flag);
-
-	//printk("spidev_rxstreamon: step--->7 \n");
+	printk("dma enable: step--->6 \n");
 
     return 0;     
 }
@@ -856,32 +855,34 @@ static void spidev_imx_rxdma_exit(struct spi_imx_data* spi_devdata)
 static void spidev_deinit_rxframe_buf(struct spi_imx_data  *spi_devdata)
 {
 	INIT_LIST_HEAD(&spi_devdata->ready_q);
-	INIT_LIST_HEAD(&spi_devdata->done_q);
+	//INIT_LIST_HEAD(&spi_devdata->done_q);
 	INIT_LIST_HEAD(&spi_devdata->working_q);
 }
 
 
 static int spidev_rxstreamoff(struct spi_imx_data *spi_devdata)
 {
-	  unsigned long flag;
-	  
-	  
-	  if (!spi_devdata)
+	unsigned long flag;
+	
+#if 1
+    user_stop_dma = 1;
+    while(dma_finished == 0);
+#endif
+     	
+	if (!spi_devdata)
 	    return -EIO;
+        
+    //spi_imx2_3_slave_disable_dma(spi_devdata);
 
-      spi_imx2_3_slave_disable_dma(spi_devdata);
-	  
-	  
-	  //spin_lock_irqsave(&spi_devdata->lock, flag);
-	  spidev_imx_rxdma_exit(spi_devdata); 
-	  //spin_unlock_irqrestore(&spi_devdata->lock, flag);
-	  
-	  spidev_deinit_rxframe_buf(spi_devdata);
-      spidev_reset_mem_rxframe(spi_devdata);
+	//spidev_imx_rxdma_exit(spi_devdata); 
 
-      /* free rxframe dma mem. */
-	  //spidev_free_mem_rxframe(spi_devdata);
-	  return 0;
+	printk("work_read_count %d \n" ,work_read_count);  
+	//spidev_deinit_rxframe_buf(spi_devdata);
+    //spidev_reset_mem_rxframe(spi_devdata);
+
+    /* free rxframe dma mem. */
+	//spidev_free_mem_rxframe(spi_devdata);
+	return 0;
 }
 
 static int spidev_imx_open(struct inode *inode, struct file *filp)
@@ -889,10 +890,10 @@ static int spidev_imx_open(struct inode *inode, struct file *filp)
 	struct spi_imx_data *spi_devdata;
 	int ret = -ENXIO;
 	unsigned long lock_flags;
-        //u16 reg_statue;
-        //u32 reg_dma;
-        //u32 reg_spiconfig;
-        //u32 reg_ctl;
+    //u16 reg_statue;
+    //u32 reg_dma;
+    //u32 reg_spiconfig;
+    //u32 reg_ctl;
 
 
 	mutex_lock(&device_list_lock);
@@ -909,23 +910,25 @@ static int spidev_imx_open(struct inode *inode, struct file *filp)
 	  return -ENODEV;
 	}
 
-       filp->private_data = spi_devdata;
-       nonseekable_open(inode, filp);
-       /* enable the clk of eCSPI */
-       clk_enable(spi_devdata->clk);
+    filp->private_data = spi_devdata;
+    nonseekable_open(inode, filp);
+    /* enable the clk of eCSPI */
+    clk_enable(spi_devdata->clk);
 
-       //spidev_rxstreamon(spi_devdata);     
-	 	    	       
-       mutex_unlock(&device_list_lock);      
-       
-       //spin_lock_irqsave(&spi_devdata->rx_int_lock, lock_flags);
-       //spi_devdata->rx_counter = 0;
-       //spin_unlock_irqrestore(&spi_devdata->rx_int_lock, lock_flags);
-
-       INIT_LIST_HEAD(&spi_devdata->ready_q);
-       INIT_LIST_HEAD(&spi_devdata->done_q);
-       INIT_LIST_HEAD(&spi_devdata->working_q);
-       return ret;
+    //spidev_rxstreamon(spi_devdata);     
+				   
+    mutex_unlock(&device_list_lock);      
+   
+    //spin_lock_irqsave(&spi_devdata->rx_int_lock, lock_flags);
+    //spi_devdata->rx_counter = 0;
+    //spin_unlock_irqrestore(&spi_devdata->rx_int_lock, lock_flags);
+#if 0
+    	
+	INIT_LIST_HEAD(&spi_devdata->ready_q);
+    //INIT_LIST_HEAD(&spi_devdata->done_q);
+    INIT_LIST_HEAD(&spi_devdata->working_q);
+#endif	
+    return ret;
 }
 
 static ssize_t spidev_imx_read(struct file *filp, char __user *buf,
@@ -936,102 +939,91 @@ static ssize_t spidev_imx_read(struct file *filp, char __user *buf,
 	spi_devdata = filp->private_data;
         
        
+    //printk("get into function ---->spidev_imx_read !!!\n");
+	if (list_empty(&spi_devdata->ready_q)){
 
-        //printk("get into function ---->spidev_imx_read !!!\n");
-        if (list_empty(&spi_devdata->ready_q)){
+		printk("list ready_q empty !!\n");        /*add text*/
+
+		spi_devdata->ready_queue_state = 1;
+		return -1;
+	}        
+	if( buf == NULL)
+	{
+
+		printk("user read buf is null pointer !!\n");
+		return -2;
+	}         
+	ready_frame = list_entry(spi_devdata->ready_q.next, spidev_data_frame_t, queue);
 	
-              printk("list ready_q empty !!\n");        /*add text*/
+	copy_to_user(buf, ready_frame->vaddress, 60*1024);
 
-              spi_devdata->ready_queue_state = 1;
-              return -1;
-        } 
-        
-        if( buf == NULL)
-        {
+	list_del(spi_devdata->ready_q.next);        
 
-             printk("user read buf is null pointer !!\n");
-             return -2;
-        }         
-
-        ready_frame = list_entry(spi_devdata->ready_q.next, spidev_data_frame_t, queue);
-        
-        copy_to_user(buf, ready_frame->vaddress, 60*1024);
-
-        list_del(spi_devdata->ready_q.next);        
-
-        list_add_tail(&ready_frame->queue, &spi_devdata->working_q);
-        
-        return 0;
+	list_add_tail(&ready_frame->queue, &spi_devdata->working_q);
+    
+    work_read_count--;
+ 
+    return 0;
 }
 
 static long spidev_imx_unlocked_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
-  struct spi_imx_data *spi_devdata;
-  struct device *dev;
-  int ret = 0;
+    struct spi_imx_data *spi_devdata;
+    //struct device *dev;
+    int ret = 0;
 
-  spi_devdata = filp->private_data;
-  if (!spi_devdata)
+    spi_devdata = filp->private_data;
+    if (!spi_devdata)
     return -EBADF;
 
-  //if (down_interruptible(&spi_devdata->busy_lock))
-  //		return -EINTR;
+    //if (down_interruptible(&spi_devdata->busy_lock))
+    //		return -EINTR;
 
-  switch (cmd) {        
-	case SPIDEV_IOC_SET_RX_DMASIZE: {
-		unsigned int dma_size;
+    switch (cmd) {        
+	    case SPIDEV_IOC_SET_RX_DMASIZE: {
+		    //unsigned int dma_size;
 
-		//if (copy_from_user(&dma_size, (void __user *)arg, sizeof(dma_size))) {
-		//	ret = -EFAULT;
-		//	break;
-		//}
+		    //if (copy_from_user(&dma_size, (void __user *)arg, sizeof(dma_size))) {
+		    //	ret = -EFAULT;
+		    //	break;
+		    //}
 
-		//spi_devdata->rx_dma_size = dma_size;
-		break;
-	}
+		    //spi_devdata->rx_dma_size = dma_size;
+		    break;
+	    }
         case SPIDEV_IOC_QUEUE_STATE: {
 			static u8  state_flag = 0;
 			if(spi_devdata->ready_queue_state){
-				 state_flag |= 1<<0;
+				state_flag |= 1<<0;
 			}else{
-				 state_flag |= 0<<0;
+				state_flag |= 0<<0;
 			}
 			if(spi_devdata->work_queue_state){
-				 state_flag |= 1<<1;
+				state_flag |= 1<<1;
 			}else{
-				 state_flag |= 0<<1;
+				state_flag |= 0<<1;
 			}
 
 			copy_to_user((void __user *)arg, &state_flag, 1);
 		
-		break;
-	}
+		    break;
+	    }
 
 	case SPIDEV_IOC_RXSTREAMON: {
-		printk("DMA ENABLE======0000====\n\r"); 
-		//u16 reg_statue;
-		//u32 reg_dma;
-		//u32 reg_spiconfig;
-		//u32 reg_ctl;
-		
-		ret = spidev_rxstreamon(spi_devdata); //使能
-		
-		//reg_statue = readl(spi_devdata->membase+0x18); //SPI_IMX2_3_STAT
-		//reg_dma = readl(spi_devdata->membase+0x14);
-		//reg_spiconfig = readl(spi_devdata->membase+0x0C); //SPI_CONFIG_REGSITER
-		//reg_ctl = readl(spi_devdata->membase+0x08);
-		//printk("reg_statue = %d ,reg_spiconfig = %x \n",reg_statue,reg_spiconfig);
-		//printk("reg_ctl = %x\n",reg_ctl );
-		//printk("reg_dma = %x\n",reg_dma ); 
+		printk("DMA ENABLE======0000====\n"); 
+
+	#if 1	
+        user_stop_dma = 0;
+		dma_finished = 0;
+    #endif
+ 	
+		ret = spidev_rxstreamon(spi_devdata); //使能 
 		if( ret == 0)
 		{
-			printk("DMA ENABLE=====1111=====\n\r"); 
+			printk("DMA ENABLE=====1111=====\n"); 
 		}else{
 			printk("ret = %d\n\r",ret); 
 		}
-	   #if 0	   
-		gpio_direction_output(IMX_GPIO_NR(6, 19), 1);
-	   #endif
 		break;
 	}
 
@@ -1054,20 +1046,17 @@ static int spidev_imx_release(struct inode *inode, struct file *filp)
         
 	//unsigned long lock_flags;
 
-        //printk("get into function --->spidev_imx_release\n"); 
-       
+	
+    printk("close fd --->spidev_imx_release\n");       
     imx6q_spi_slave_release_fasync(-1, filp, 0);
 	mutex_lock(&device_list_lock);
 	spi_devdata = filp->private_data;
 	filp->private_data = NULL;
 	spi_devdata->devtype_data.reset(spi_devdata);
 	spi_devdata->devtype_data.intctrl(spi_devdata, 0);
-	spidev_imx_rxdma_exit(spi_devdata);
+	//spidev_imx_rxdma_exit(spi_devdata);
 	clk_disable(spi_devdata->clk);
 	mutex_unlock(&device_list_lock);
-	//spin_lock_irqsave(&spi_devdata->rx_int_lock, lock_flags);
-	//spi_devdata->rx_counter = 0;
-	//spin_unlock_irqrestore(&spi_devdata->rx_int_lock, lock_flags);
 	return 0;
 }
 
@@ -1077,8 +1066,8 @@ static const struct file_operations spidev_imx_fops = {
 	.read  = spidev_imx_read,
 	.unlocked_ioctl = spidev_imx_unlocked_ioctl,
 	.release = spidev_imx_release,
-        .fasync  = imx6q_spi_slave_fasync,
-        //.mmap = spidev_imx_mmap,
+    .fasync  = imx6q_spi_slave_fasync,
+    //.mmap  = spidev_imx_mmap,
 };
 
 static int __devinit spidev_imx_probe(struct platform_device *pdev)
@@ -1093,7 +1082,7 @@ static int __devinit spidev_imx_probe(struct platform_device *pdev)
 	int irq;
 	unsigned long minor;
 
-        printk("get into function ---> spidev_imx_probe \n");
+    printk("get into function ---> spidev_imx_probe \n");
 	spi_devdata = kzalloc(sizeof(*spi_devdata), GFP_KERNEL);
 	if (!spi_devdata) {
 		printk("allocate spi_devdata fail.\n");
@@ -1103,7 +1092,7 @@ static int __devinit spidev_imx_probe(struct platform_device *pdev)
 	spin_lock_init(&spi_devdata->spi_lock);
 	//spin_lock_init(&spi_devdata->rx_int_lock);
 	//sema_init(&spi_devdata->busy_lock, 1);
-	//INIT_LIST_HEAD(&spi_devdata->device_entry);
+	INIT_LIST_HEAD(&spi_devdata->device_entry);
 	//init_waitqueue_head(&spi_devdata->rx_dma_wait);
 
 
@@ -1113,7 +1102,7 @@ static int __devinit spidev_imx_probe(struct platform_device *pdev)
                                     
 	/* get clock */
 	//clk = clk_get(dev, NULL); 
-        clk = clk_get_sys("imx6q-ecspi.1", NULL);
+    clk = clk_get_sys("imx6q-ecspi.1", NULL);
 	if (IS_ERR(clk)) {
 		dev_err(dev, "unable to get clock\n");
 		ret = PTR_ERR(clk);
@@ -1122,7 +1111,7 @@ static int __devinit spidev_imx_probe(struct platform_device *pdev)
 
 	spi_devdata->clk = clk;
 
-        printk("spi_devdata->clk = %d  \n",spi_devdata->clk);
+    printk("spi_devdata->clk = %d  \n",spi_devdata->clk);
         
 	/* get reg base */
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
@@ -1152,17 +1141,23 @@ static int __devinit spidev_imx_probe(struct platform_device *pdev)
      
 	spi_devdata->membase = mem_base;
  
-        printk("spi_devdata->mapbase = %d  \n",spi_devdata->mapbase);
-
-        printk("spi_devdata->membase = %d  \n",spi_devdata->membase);
+ 
+    printk("spi_devdata->membase = %d  \n",spi_devdata->membase);
 	/* allocate rxframe buffer */
-  	
-        ret = spidev_alloc_mem_rxframe( spi_devdata );
-        if (ret != 0) {
-              printk("error allocate rxframe memory\n");
-              goto out_iounmap;
+ 	
+    ret = spidev_alloc_mem_rxframe( spi_devdata );
+    if (ret != 0) {
+        printk("error allocate rxframe memory\n");
+        goto out_iounmap;
            
-        }
+    }
+	
+#if 1
+    INIT_LIST_HEAD(&spi_devdata->ready_q);
+    //INIT_LIST_HEAD(&spi_devdata->done_q);
+    INIT_LIST_HEAD(&spi_devdata->working_q);
+    spidev_init_rxsegnums_buf(spi_devdata);	
+#endif		
 	/* get irq request line */
 #ifdef ENABLE_SPI_INTERRUPT
 
@@ -1199,7 +1194,7 @@ static int __devinit spidev_imx_probe(struct platform_device *pdev)
 	}
 	spi_devdata->dma_req_tx = res->start;
 #else
-        spi_devdata->dma_req_rx = MX6Q_DMA_REQ_CSPI2_RX;
+    spi_devdata->dma_req_rx = MX6Q_DMA_REQ_CSPI2_RX;
 #endif
 
   	mutex_lock(&device_list_lock);
@@ -1231,53 +1226,53 @@ static int __devinit spidev_imx_probe(struct platform_device *pdev)
 	ret = clk_enable(clk);
 	spi_devdata->spi_clk = clk_get_rate(spi_devdata->clk);
         
-        printk("spi_devdata->spi_clk = %d \n",spi_devdata->spi_clk);
+    printk("spi_devdata->spi_clk = %d \n",spi_devdata->spi_clk);
 
-        spi_devdata->devtype_data.reset(spi_devdata);
-        spi_devdata->devtype_data.intctrl(spi_devdata, 0);
+    spi_devdata->devtype_data.reset(spi_devdata);
+    //spi_devdata->devtype_data.intctrl(spi_devdata, 0);
 	clk_disable(clk);
 	spin_lock_irq(&spi_devdata->spi_lock);
   	platform_set_drvdata(pdev, spi_devdata);
   	spin_unlock_irq(&spi_devdata->spi_lock);
-        printk("exit function ---> spidev_imx_probe \n");    
+    printk("exit function ---> spidev_imx_probe \n");    
   	dev_info(dev, "probed\n");
 
-  return ret;
+    return ret;
 
 out_free_irq:
 #ifdef ENABLE_SPI_INTERRUPT
-	free_irq(irq, spi_devdata);
+    free_irq(irq, spi_devdata);
 #endif
 out_free_mem_rxframe:
-  spidev_free_mem_rxframe(spi_devdata);
+    spidev_free_mem_rxframe(spi_devdata);
 
 out_release_mem:
-  release_mem_region(res->start, resource_size(res));
+    release_mem_region(res->start, resource_size(res));
 out_iounmap:
-  iounmap(mem_base);
+    iounmap(mem_base);
 
 err_out_devdata:
-  kfree(spi_devdata);
+    kfree(spi_devdata);
 
-  return ret;
+    return ret;
 }
 
 static int __devexit spidev_imx_remove(struct platform_device *pdev)
 {
-  struct spi_imx_data  *spi_devdata = platform_get_drvdata(pdev);
-  struct resource *res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+    struct spi_imx_data  *spi_devdata = platform_get_drvdata(pdev);
+    struct resource *res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 
-  //clk_disable(spi_devdata->clk);
+    //clk_disable(spi_devdata->clk);
 	clk_put(spi_devdata->clk);
 #ifdef ENABLE_SPI_INTERRUPT
 	free_irq(spi_devdata->irq, spi_devdata);
 #endif
-        /* free rxframe dma mem. */
+    /* free rxframe dma mem. */
 	spidev_free_mem_rxframe(spi_devdata);
 
-        iounmap(spi_devdata->membase);
+    iounmap(spi_devdata->membase);
 
-        release_mem_region(res->start, resource_size(res));
+    release_mem_region(res->start, resource_size(res));
 
 	/* make sure ops on existing fds can abort cleanly */
 	spin_lock_irq(&spi_devdata->spi_lock);
@@ -1310,20 +1305,20 @@ static int __init spidev_imx_init(void)
 {
 	int ret = -ENODEV;
 
-        printk("start register slave_spi_dev --->step1\n");
+    printk("start register slave_spi_dev --->step1\n");
 	ret = register_chrdev(SPIDEV_IMX_MAJOR, "mxc_spidev", &spidev_imx_fops);
 	if (ret < 0) {
 		printk("register character devicd fail.\n");
 		return ret;
 	}
-        printk("start register slave_spi_dev --->step2\n");
+    printk("start register slave_spi_dev --->step2\n");
 	spidev_imx_class = class_create(THIS_MODULE,"mxc_spidev");
 	if (IS_ERR(spidev_imx_class)) {
 		printk("class create fail.\n");
 		ret = PTR_ERR(spidev_imx_class);
 		goto err_out_chrdev;
 	}
-        printk("start register slave_spi_dev --->step3\n");
+    printk("start register slave_spi_dev --->step3\n");
 	ret = platform_driver_register(&spidev_imx_driver);
 	if (ret < 0) {
 		goto err_out_class;

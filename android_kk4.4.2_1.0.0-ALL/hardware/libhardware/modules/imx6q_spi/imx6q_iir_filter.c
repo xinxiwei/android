@@ -1,4 +1,4 @@
-/***************************************************************************************
+﻿/***************************************************************************************
 *  ( c ) Copyright 2017 ENNOVAR ,  All rights reserved
 *
 *    create_by:           gxl
@@ -37,7 +37,7 @@
 #include <fcntl.h> 
 #include <hardware/imx6q_iir_filter.h>
 #include <hardware/IIRCoeffs.h>
-
+/* IIR高通滤波器，用下限卡 */
 extern float S0_F016_ReverseCoeffs[SX_FX_REVERSCOEFFS_COMMON_NUM];
 extern float S0_F016_ForwardCoeffs[SX_FX_FORWARDCOEFFS_COMMON_NUM];
 extern float S0_F1_ReverseCoeffs[SX_FX_REVERSCOEFFS_COMMON_NUM];
@@ -191,7 +191,7 @@ extern float S8_F50_ForwardCoeffs[S0_F20_FORWARDCOEFFS_NUM];
 extern float S8_F100_ReverseCoeffs[S0_F20_REVERSCOEFFS_NUM];
 extern float S8_F100_ForwardCoeffs[S0_F20_FORWARDCOEFFS_NUM];
 
-// fir滤波之后的无效点数
+/* fir滤波之后的无效点数 */
 // iir:  0.16 1 2 5 10 20 50 100  //下限频率
 // fir: 500 1000 2000 2500 4000 5000 10000 20000 40000 //上限频率
 static int InvalidNumTable[NUM_SAMPLERATES][NUM_LOWER_FRE] ={
@@ -208,6 +208,10 @@ static int InvalidNumTable[NUM_SAMPLERATES][NUM_LOWER_FRE] ={
 };
 
 static int Get_InvalidNum_From_Table( int* table  ,  int  iir_frq  ){
+    if(table == NULL)
+    {
+        exit( EXIT_FAILURE );
+    }
      switch( iir_frq ){		
 	    case 0:{
             return table[IIR_F016];
@@ -231,6 +235,7 @@ static int Get_InvalidNum_From_Table( int* table  ,  int  iir_frq  ){
     }
 }
 
+/* 功能描述：得到无效点数 */
 int Get_InvalidNum(  int Upper_frq  ,  int Lower_frq  )
 {
     switch( Upper_frq )
@@ -312,7 +317,7 @@ static tPIIRFilter _GetFilterByFC( int SRID ,  int FCID  ) //输入采样率 ，
     int index_sr = 0;
     int index_fc = 0;
     
-    switch( SRID )
+    switch( SRID ) //采样率
     {
         case SAMPLE_FRE_102400:
         {
@@ -365,7 +370,7 @@ static tPIIRFilter _GetFilterByFC( int SRID ,  int FCID  ) //输入采样率 ，
         }
     }
 
-    switch( FCID )
+    switch( FCID )//下限频率
     {
         case LOWER_FRE_0_16:
         {
@@ -505,9 +510,9 @@ static tIIRFilter gIIRFilter[NUM_SAMPLERATES] ={
 
 void  IIRFilterTable_Init( void )
 {
-   int i  , j;   
-   for(  i=0; i< 9 ; i++ ){		 
-	 for(  j= 0; j< 8; j++ ){
+   int i = 0, j=0;   
+   for(  i=0; i< NUM_SAMPLERATES ; i++ ){	//9	 
+	 for(  j= 0; j< NUM_LOWER_FRE; j++ ){ //8
 		memcpy( &IIRFiltersTable[i][j]   , &gIIRFilter[j] , sizeof( tIIRFilter ) );    
 	 }
    }	
@@ -538,7 +543,10 @@ static void cascade_iir_filter( float*   data ,
     int index = 0;
     float  a[3]  = {0.0};
     float  b[3]  = {0.0};
-
+    if(data == NULL|| rev_coeffs == NULL|| for_coeffs ==NULL || w== NULL)
+    {
+        exit( EXIT_FAILURE );
+    }
     //*s1:求级数
     //*s2:滤波
     int half_coeffs = rev_coeffs_num>>1;
@@ -594,9 +602,14 @@ void integrate_o1( float*  data ,  int len )// ,  float alpha ,  float gamma ,  
 	float x_state = 0.0f;
 	float y_state = 0.0f;
 	float factor = 100.0f;
-	
+	if(data == NULL)
+    {
+        exit( EXIT_FAILURE );
+    }
     if ( 0 == len )
-        return;
+    {
+        exit( EXIT_FAILURE );
+    }
 	int u16Loop=0;
     for( u16Loop=0; u16Loop < len; u16Loop++ )
     {
@@ -640,13 +653,18 @@ void integrate_o2( float* data ,  int len )// ,  float alpha , float gamma , flo
 	float x2_state = 0.0f;	
     float y1_state = 0.0f;	
 	float y2_state = 0.0f;	
+    if(data == NULL)
+    {
+        exit( EXIT_FAILURE );
+    }
 	
 	LOGD( "alpha = %f , gamma =%f ,  beta = %f ,  factor = %f ,  x1_state = %f ,  x2_state = %f , y1_state = %f ,  y1_state = %f" ,  alpha , gamma , beta , factor , x1_state , x2_state , y1_state , y2_state );
     int u16Loop = 0;	
     // 入参判断
     if( 0 == len )
-        return;
-
+    {
+        exit( EXIT_FAILURE );
+    }
     for (  u16Loop = 0; u16Loop < len; u16Loop++ )
     {
         fltTemp = ( ( 2*( x1_state ) + ( x2_state ) + data[u16Loop] )*alpha
@@ -661,22 +679,21 @@ void integrate_o2( float* data ,  int len )// ,  float alpha , float gamma , flo
 }
 
 
+
+/* 功能描述：IIR高通滤波入口函数 */
  void  enter_IIR_Filter( float *src_data  , int length  ,  int up_freq  ,  int lw_freq )
 {	
     LOGD( "xin：enter_IIR_Filter_length = %d ,  up_freq = %d ,  lw_freq = %d" , length , up_freq , lw_freq );
-	int i=0;
-    #if 0	
-    for( i=0;i<30;i++ )
-	{
-        LOGD( "enter_IIR_Filter_src_data[%d] = %f" , i , src_data[i] );
-	}
-	#endif
+	int i=0;    
+    if(src_data == NULL)
+    {
+        exit( EXIT_FAILURE );
+    }
 	IIRFilterTable_Init(  );//初始化IIR滤波器系数
-
 	
 	tIIRFilter *pIIRFilter= NULL;
 	pIIRFilter = _GetFilterByFC( _GetSampRate( up_freq )  ,  lw_freq  );//通过上下限，获取滤波系数	
-	//LOGD( "pIIRFilter->numRevCoeffs = %d , pIIRFilter->numForCoeffs = %d" , pIIRFilter->numRevCoeffs , pIIRFilter->numForCoeffs );
+        
 	float *state_para = NULL; 
 	if ( state_para ==  NULL)
 	{
@@ -692,10 +709,10 @@ void integrate_o2( float* data ,  int len )// ,  float alpha , float gamma , flo
 	
 	
 	#if 0
-	for( i=0;i< length;i++ )
+	/* for( i=0;i< length;i++ )
 	{
 		 LOGD( "enter_IIR_Filter_ret_data[%d] = %f" , i , src_data[i] );
-	}
+	} */
 	#endif
 	
 	if( state_para != NULL)

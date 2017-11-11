@@ -593,7 +593,7 @@ static int __devinit spidev_probe(struct spi_device *spi)
 	unsigned long		minor;
         
         
-        printk("spidev_probe function start running \n");
+    //printk("spidev_probe function start running \n");
 
 	/* Allocate driver data */
 	spidev = kzalloc(sizeof(*spidev), GFP_KERNEL);
@@ -613,7 +613,7 @@ static int __devinit spidev_probe(struct spi_device *spi)
 	mutex_lock(&device_list_lock);
 	minor = find_first_zero_bit(minors, N_SPI_MINORS);
 
-        printk("minor value = %d ,minors value = %d\n",minor,minors);
+       // printk("minor value = %d ,minors value = %d\n",minor,minors);
 	
         if (minor < N_SPI_MINORS) {
 		struct device *dev;
@@ -624,7 +624,7 @@ static int __devinit spidev_probe(struct spi_device *spi)
 				    spi->master->bus_num, spi->chip_select);
 		status = IS_ERR(dev) ? PTR_ERR(dev) : 0;
 
-                printk("device_create later return status = %d\n",status);
+               // printk("device_create later return status = %d\n",status);
 	} else {
 		dev_dbg(&spi->dev, "no minor number available!\n");
 		status = -ENODEV;
@@ -639,7 +639,7 @@ static int __devinit spidev_probe(struct spi_device *spi)
 		spi_set_drvdata(spi, spidev);
 	else
 		kfree(spidev);
-        pr_err(":spidev probe %d\n",status);
+       // pr_err(":spidev probe %d\n",status);
 	return status;
 }
 
@@ -691,7 +691,7 @@ static int __init spidev_init(void)
 	 * the driver which manages those device numbers.
 	 */
 
-        printk("start register_chrdev\n");
+    //printk("start register_chrdev\n");
 	BUILD_BUG_ON(N_SPI_MINORS > 256);
 	status = register_chrdev(SPIDEV_MAJOR, "spi", &spidev_fops);
 	if (status < 0)

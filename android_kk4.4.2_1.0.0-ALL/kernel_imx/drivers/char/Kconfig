@@ -5,14 +5,29 @@
 menu "Character devices"
 
 source "drivers/tty/Kconfig"
-
+source "drivers/char/xin_hello/Kconfig"
 
 config IMX6Q_CONTROL_GPIO
 	tristate "This is gpio driver support of imx6q pin configging"
 	default y
 	help
           this a gpio control user send 0,1,2 exchange pin statue
-               send 0 turn on pin ,send turn off pin.   
+               send 0 turn on pin ,send turn off pin.
+			   
+config IMX6Q_CONTROL_LIGHT
+	tristate "This is light driver support of imx6q pin configging"
+	default y
+	help
+          this a light control user send 0,1,2 exchange pin statue
+               send 0 turn on pin ,send turn off pin.	
+			   
+config IMX6Q_CONTROL_BACKLIGHT
+	tristate "This is light driver support of imx6q pin configging"
+	default y
+	help
+          this a light control user send 0,1,2 exchange pin statue
+               send 0 turn on pin ,send turn off pin.
+			   
 config DEVMEM
 	bool "Memory device driver"
 	default y

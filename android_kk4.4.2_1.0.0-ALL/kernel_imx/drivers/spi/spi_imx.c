@@ -1474,7 +1474,7 @@ static int spi_imx_transfer(struct spi_device *spi,
 				struct spi_transfer *transfer)
 {
 	int ret;
-	printk("spi_imx_transfer===\n\r");
+	//printk("m_spi-1\n\r");
     struct spi_imx_data *spi_imx = spi_master_get_devdata(spi->master);
 
 	clk_enable(spi_imx->clk);
@@ -1487,6 +1487,7 @@ static int spi_imx_transfer(struct spi_device *spi,
 
 	spi_imx_push(spi_imx);
 
+	//printk("m_spi-2\n\r");
 	//spi_imx->devtype_data.intctrl(spi_imx, MXC_INT_TE);
 #if 1
 	if(spi_imx->master_mode==0){
@@ -1498,17 +1499,17 @@ static int spi_imx_transfer(struct spi_device *spi,
         } 
 #endif   
        
-        printk("spi_imx->master_mode = %d  \n",spi_imx->master_mode);
+        //printk("spi_imx->master_mode = %d  \n",spi_imx->master_mode);
 	//wait_for_completion(&spi_imx->xfer_done);
 #if 1   //patch spi_slave_dma //gxl 2016.5.31
-//	
+	//printk("m_spi-3\n\r");
 	ret=wait_for_completion_timeout(&spi_imx->xfer_done, msecs_to_jiffies(10000));	
 	if(!ret){
 		pr_err("PIO waited time out\n");
 	}
 #endif
 	clk_disable(spi_imx->clk);
-
+    //printk("m_spi-4\n\r");
 	return transfer->len;
 }
 
@@ -2128,7 +2129,7 @@ static int __devinit spi_imx_probe(struct platform_device *pdev)
 	spi_imx->dma_inited=0;
 	spin_lock_init(&spi_imx->lock);
 
-	printk("spi_imx_probe: spi_imx->dma_req_rx = %d \n",spi_imx->dma_req_rx);
+	//printk("spi_imx_probe: spi_imx->dma_req_rx = %d \n",spi_imx->dma_req_rx);
 //#if defined(CONFIG_IMX6_SDP_MISCSPI)
 //#else
 	for (i = 0;(spi_imx->chipselect)&&(i < master->num_chipselect); i++) {
@@ -2162,7 +2163,7 @@ static int __devinit spi_imx_probe(struct platform_device *pdev)
 
 #if 1  //patch spi_dma_slave //gxl 2016.5.31 
 #if defined(CONFIG_SPI_IMX_VER_2_3_SLAVE)
-        printk("spi_imx_probe: spi_imx->master_mode = %d \n",spi_imx->master_mode);
+        //printk("spi_imx_probe: spi_imx->master_mode = %d \n",spi_imx->master_mode);
 	if(spi_imx->master_mode==0){
                 printk("spi_imx_probe: spi_imx->master_mode == 0 \n");
                 dev_info(&pdev->dev,"IMX6 spi controller use slave mode");	
@@ -2176,7 +2177,7 @@ static int __devinit spi_imx_probe(struct platform_device *pdev)
                 spi_imx->devtype_data =
 			spi_imx_devtype_data[0];
 
-		dev_info(&pdev->dev,"IMX6 spi controller mode %d\n",spi_imx->master_mode);	
+		//dev_info(&pdev->dev,"IMX6 spi controller mode %d\n",spi_imx->master_mode);///xinxiwei 20170921 	
 	}
 #endif
 	//printk("find  NULL pointe step--->1 !!\n"); 
@@ -2202,7 +2203,7 @@ static int __devinit spi_imx_probe(struct platform_device *pdev)
         //printk("find  NULL pointe step--->4 !!\n");
 #if 1   //patch spi_dma_slave //gxl 2016.5.31
         spi_imx->mapbase=res->start;
-        printk("spi_imx->base = %d \n",spi_imx->base);
+        //printk("spi_imx->base = %d \n",spi_imx->base);
 #endif
 
 //#ifdef SLAVA_DMA_REC
@@ -2211,7 +2212,7 @@ static int __devinit spi_imx_probe(struct platform_device *pdev)
 		ret = -EINVAL;
 		goto out_iounmap;
 	}
-        printk("spi_imx->irq = %d \n",spi_imx->irq);
+        //printk("spi_imx->irq = %d \n",spi_imx->irq);
         //printk("find  NULL pointe step--->5 !!\n");
 	ret = request_irq(spi_imx->irq, spi_imx_isr, 0, DRIVER_NAME, spi_imx);
 	if (ret) {
@@ -2226,11 +2227,11 @@ static int __devinit spi_imx_probe(struct platform_device *pdev)
 		ret = PTR_ERR(spi_imx->clk);
 		goto out_free_irq;
 	}
-        printk("spi_imx->clk = %d \n",spi_imx->clk);
+        //printk("spi_imx->clk = %d \n",spi_imx->clk);
         //printk("find  NULL pointe step--->7 !!\n");
 	clk_enable(spi_imx->clk);
 	spi_imx->spi_clk = clk_get_rate(spi_imx->clk);
-        printk("spi_imx->spi_clk = %d \n",spi_imx->spi_clk);
+        //printk("spi_imx->spi_clk = %d \n",spi_imx->spi_clk);
         //printk("find  NULL pointe step--->8 !!\n");
 	spi_imx->devtype_data.reset(spi_imx);
 

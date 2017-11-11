@@ -1,6 +1,4 @@
 
-
-
 #ifndef ANDROID_IMX6Q_SPI_PRESSURE
 #define ANDROID_IMX6Q_SPI_PRESSURE
 //DMA
@@ -28,6 +26,7 @@
 #define SPI_SAMPLE  102400   //Hz
 
 #define ADCModeAddr   0
+extern int test_mode; //声明内部测试模式
 
 typedef struct time_wave_para
 {
@@ -44,6 +43,7 @@ typedef struct time_wave_para
      float range_gain_value2;//二级增益    
      int trig_mode; //触发方式
      float trig_value;//触发电平值
+     int version_mode; //内部版本模式
 }timewave;
 
 typedef struct freq_wave_para 
@@ -65,6 +65,7 @@ typedef struct freq_wave_para
      float range_gain_value2;//二级增益    
      int trig_mode; //触发方式
      float trig_value;//触发电平值
+     int version_mode; //内部版本模式
 }freqwave;
 
 typedef struct total_rend_para{
@@ -82,18 +83,20 @@ typedef struct total_rend_para{
 	 int range_disp_value; //位移量程
      float range_gain_value1;//一级增益
      float range_gain_value2;//二级增益 
+     int version_mode; //内部版本模式
 }totalrend;
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif	  		
-    extern timewave my_timewave;
+    /* extern timewave my_timewave;
 	extern freqwave my_freqwave;
-	extern totalrend my_totalrend;
+	extern totalrend my_totalrend; */
+    
 	extern int  spi_freq();
-	extern void spi_poweron();
-	extern void spi_poweroff();		
+	extern void poweron_spi();
+	extern void poweroff_spi();		
 	extern int  set_press_reg(int smp_rate);
 	extern int  set_singleCH_vibrate_reg(int signal_type,float maxFreq, float minFreq);
 	extern int  set_doubleCH_vibrate_reg(int signal_type,float maxFreq, float minFreq);

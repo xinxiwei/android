@@ -26,7 +26,15 @@ public class SgPropertyBase {
     private float trigLevel;//瑙﹀彂鐢靛钩
     private float daqFreq;//瀹為檯閲囨牱棰戠巼
     private int waveLength;//娉㈠舰闀垮害
+	private int versionMode;
 
+	public int getVersionMode(){
+		return versionMode;
+	}
+	
+	public void setVersionMode(int versionMode){
+		this.versionMode=versionMode;
+	}
     public int getPropID() {
         return propID;
     }

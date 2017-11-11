@@ -24,6 +24,7 @@
 #include <time.h>
 
 #include <hardware/imx6q_spi_config.h>
+#include <hardware/imx6q_spi.h>
 
 #define   SMP_RATE_102400     102400   //除以2.56 =40K
 #define   SMP_RATE_51200      51200    //20K
@@ -158,7 +159,7 @@ int enable_CH_B( bool flag )//使能震动CHB OK
 	return data;
 }
 
-void enable_CH_B_integrate( bool flag )//使能CHB的硬件积分 OK
+int enable_CH_B_integrate( bool flag )//使能CHB的硬件积分 OK
 {
 	LOGD( "xin:===enable_CH_B_integrate" );
 	unsigned int data = sread( 0 );
@@ -172,6 +173,7 @@ void enable_CH_B_integrate( bool flag )//使能CHB的硬件积分 OK
 	}
 	swrite( 0 , data );
 	//sread( 0 );
+    return data;
 }
 
 void set_adc_mode(  int adcMode  )//设置ADC的工作模式 OK
@@ -199,7 +201,7 @@ void set_adc_mode(  int adcMode  )//设置ADC的工作模式 OK
 int get_adc_mode(  )//得到adc的工作模式 OK
 {
 	//LOGD( "xin:===get_adc_mode" );
-	unsigned int data;
+	unsigned int data = 0;
 	int mode =0;
 	data=sread( 0 );
 	data = data>>8;//7
@@ -224,12 +226,12 @@ int get_adc_mode(  )//得到adc的工作模式 OK
 
 float get_adc_clk_rate(  )//得到ADC时钟速率 OK  HZ
 {
-	unsigned int data;
+	unsigned int data = 0;
 	data=sread( 0 ); //ADC_CLK选择  寄存器0x0000
 	data = data >> 5;
 	data &=0x7;
 	float ret=0.0;
-	float clk_value = 26214400;//Hz
+	float clk_value = 26214400.0;//Hz
 	switch( data )
 	{
 		case 0:
@@ -270,12 +272,12 @@ void set_adc_clk_rate( float sampleRate )//设置ADC时钟速率 -------------
 		default:break;
 	}
 
-	float real_clk =0;
+	float real_clk = 0.0;
 	real_clk = A * sampleRate*1024;  //得到真实的下发频率 单位HZ
 		
 	double dataGap = 26.2144 * 1024*1024/16;
 	double clk_value = dataGap *16;
-	unsigned int data;
+	unsigned int data = 0;
 	data = sread( 0 );
 	if( fabs( clk_value-real_clk ) < dataGap )//000
 	{
@@ -436,7 +438,7 @@ int get_sample_type( int ch )//得到采集类型 OK
 
 void set_24V( int ch ,  bool flag )//设置24v电源的开关 OK
 {
-	//LOGD( "xin:===set_24V" );
+	LOGD( "xin:===set_24V, flag = %d",flag );
 	unsigned int data=0;
 	unsigned int reg_addr =0;
 	switch( ch )
@@ -519,7 +521,7 @@ void set_voltage_range( int ch ,  int voltageRange )//设置电压量程 OK
 void set_adc_clk( int adcClk )
 {
 	LOGD( "xin:===set_adc_clk" );
-	unsigned int data;
+	unsigned int data =0;
 	data = sread( 0 );
 	switch( adcClk )
 	{
@@ -650,7 +652,7 @@ int get_voltage_range( int ch )//得到电压量程 OK
 void set_integrate( int ch ,  int integrateType )//设置积分选择 OK
 {
 	//LOGD( "xin:===set_integrate" );
-	unsigned int data;
+	unsigned int data = 0;
 	unsigned int reg_addr =0;
 	switch( ch )
 	{
@@ -712,7 +714,7 @@ int get_integrate( int ch )//得到积分选择 OK
 void set_speed_resistance( float voltage )//设置转速通道的分压电阻值-----------
 {
 	//LOGD( "xin:===set_speed_resistance" );
-	unsigned int data;
+	unsigned int data = 0;
 	unsigned int reg_addr =0;
 	enable_rotation( true ); //转速使能
 	data = sread( 0xc );	
@@ -724,7 +726,7 @@ void set_speed_resistance( float voltage )//设置转速通道的分压电阻值
 void set_speed_triger_mode( int speedTriMode )//设置转速触发方式  OK
 {
 	//LOGD( "xin:===set_speed_triger_mode" );
-	unsigned int data;
+	unsigned int data = 0;
 	data=sread( 0xc );// 0x000c	
 	switch( speedTriMode )
 	{
@@ -741,7 +743,7 @@ void set_speed_triger_mode( int speedTriMode )//设置转速触发方式  OK
 
 int get_speed_triger_mode(  )//得到转速触发方式  OK
 {
-	unsigned int data;
+	unsigned int data = 0;
 	int tri_mode =0;
 	data = sread( 0xc );	
 	data = data >>8;
@@ -763,7 +765,7 @@ int get_speed_triger_mode(  )//得到转速触发方式  OK
 void set_triger_ch( int ch )//设置模拟触发通道  OK
 {
 	//LOGD( "xin:===set_triger_ch" );
-	unsigned int data;
+	unsigned int data = 0;
 	unsigned int reg_addr =0x10;
 	data=sread( reg_addr );	
 	switch( ch )
@@ -782,7 +784,7 @@ void set_triger_ch( int ch )//设置模拟触发通道  OK
 
 int get_triger_ch(  )//得到模拟触发通道  OK
 {
-	unsigned int data;
+	unsigned int data = 0;
 	unsigned int reg_addr =0x10;
 	int ch_num =0;
 	data = sread( reg_addr );
@@ -803,7 +805,7 @@ int get_triger_ch(  )//得到模拟触发通道  OK
 void set_triger_mode( int triMode )//设置开始采集的触发方式  OK
 {
 	//LOGD( "xin:===set_triger_mode" );
-	unsigned int data;
+	unsigned int data = 0;
 	data=sread( 0x10 );// 0x0010	
 	switch( triMode )
 	{
@@ -826,7 +828,7 @@ void set_triger_mode( int triMode )//设置开始采集的触发方式  OK
 
 int get_triger_mode(  )//得到触发方式 OK
 {
-	unsigned int data;
+	unsigned int data = 0;
 	int tm = 0;
 	data=sread( 0x10 );
 	data = data >> 4;
@@ -900,23 +902,25 @@ int spi_freq(  )  // 采集板采集频率
 	return SPI_SAMPLE;
 }
 
-void spi_poweron(  )//SPI POWER ON
+void poweron_spi(  )//SPI POWER ON
 {
-	LOGD( "xin:===spi_poweron设备上电" );
+	//LOGD( "xin:===poweron_spi设备上电开始" );
 	GpioOpen(  );
 	GpioSet( FPGA_3V3_CTR , GPIO_SET_ON );
 	GpioSet( FPGA_1V2_CTR , GPIO_SET_ON );
 	GpioSet( FPGA_2V5_CTR , GPIO_SET_ON );
-	usleep(130000);
+	//usleep(130000);
+	usleep(300000);
+    LOGD( "xin:===poweron_spi设备上电结束" );
 }
 
-void spi_poweroff(  )//SPI POWER OFF
+void poweroff_spi(  )//SPI POWER OFF
 {
-    LOGD( "xin:===spi_poweroff设备下电" );    
 	GpioSet( FPGA_3V3_CTR , GPIO_SET_OFF );	
 	GpioSet( FPGA_2V5_CTR , GPIO_SET_OFF );
 	GpioSet( FPGA_1V2_CTR , GPIO_SET_OFF );	
-    usleep( 100000 );	
+    usleep( 100000 );
+	LOGD( "xin:===poweroff_spi设备下电结束" );  
 }
 
 void reset_fpga_reg(  ) //复位FPGA的寄存器
@@ -925,51 +929,62 @@ void reset_fpga_reg(  ) //复位FPGA的寄存器
 	swrite( ResetFpgaRegAddr , ResetFpgaRegData );
 	usleep( 50000 );
 }
+
 	
 struct main_fpga_reg para={0.0 , 0.0 , 0.0 , false , false , 0};
 int set_press_reg( int smp_rate ) //设置压力采集寄存器，默认CHA
 {
 	LOGD( "xin:=== set_press_reg==========start" ); 
-	//spi_poweron(  );//上电后延时100 ms
+	//poweron_spi(  );//上电后延时100 ms
 	//usleep( 130000 );	//130ms
 	
-	int error_value=0;
-	if( masterspi_open(  ) == -1 )
-		error_value = -1;//打开主设备异常
+	if( masterspi_open(  ) == -1 )//打开主设备异常
+    {
+        return -1;
+    }
 	//----------------
 	//reset_fpga_reg(  ); //复位寄存器
-	error_value = enable_CH_A( true );//使能CH1
+    if(enable_CH_A( true ) == -1)//使能CH1
+    {
+        return -1;
+    }
 	set_couple_mode( CHA ,  DC );//DC耦合 ,   AC , DC
-	set_24V( CHA ,  true );//true表示启用24v电源的开关激励，真实压力传感器环境   ， false 表示不启用24V激励，发射器验证 
+    
+#if 1  //正式版本要打开
+	set_24V( CHA ,  true );//true表示启用24v电源的开关激励，真实压力传感器环境   ， false 表示不启用24V激励，发射器验证
+#else
+    set_24V( CHA ,  false );//true表示启用24v电源的开关激励，真实压力传感器环境   ， false 表示不启用24V激励，发射器验证 
+#endif
 	
 	//set_sample_rate( smp_rate );	
 	//---------------
-	//LOGD( "set_press_reg error_value = %d" , error_value );	
 	LOGD( "xin:=== set_press_reg==========end" ); 
 	sread( 0 );
 	sread( 0x4 );		
-	return error_value;	
+	return 0;	
 }
 
-int set_singleCH_vibrate_reg( int signalType , float maxFreq ,  float minFreq ) //设置振动采集寄存器，单通道振动默认CHB
+int set_singleCH_vibrate_reg( int signalType , float maxFreq ,  float minFreq) //设置振动采集寄存器，单通道振动默认CHB
 {
-	LOGD( "xin:=== set_singleCH_vibrate_reg==========start" ); 
-	//spi_poweron(  );
+	LOGD( "xin:=== set_singleCH_vibrate_reg==========start");
+	//poweron_spi(  );
 	//usleep( 130000 );	
 	
-	int error_value=0;
-	if( masterspi_open(  ) == -1 )
+	if( masterspi_open(  ) == -1 )//打开主设备异常
 	{
-		error_value = -1;//打开主设备异常
+        return -1;
 	}
 	
-	reset_fpga_reg(  ); //复位寄存器
-	
+	reset_fpga_reg(  ); //复位寄存器	
 			
 	if( signalType == 0 ) //0：加速度，1：速度，2：位移
 	{   
 	    //LOGD( "xin:=== signalType == 0 ,  ACC" );
-	    error_value = enable_CH_B( true );//使能CHA
+	    if (enable_CH_B( true ) == -1)//使能CHA
+        {
+            return -1;
+        }            
+            
         if( minFreq < 7 ) //小于7Hz以下建议用DC耦合，大于等于7HZ 用AC耦合
 		{
 			//LOGD( "xin:=== minFreq <7HZ ,  DC" ); 
@@ -981,7 +996,11 @@ int set_singleCH_vibrate_reg( int signalType , float maxFreq ,  float minFreq ) 
 	}else if( signalType == 1 ) //速度
 	{  
 	    LOGD( "xin:=== signalType == 1 ,  SPEED" ); 
-		enable_CH_B_integrate( true );//使能CHA的积分
+        if(enable_CH_B_integrate( true )== -1)//使能CHA的积分
+        {
+            return -1;
+        }
+            
 		set_integrate( CHB ,  SPEED );//设置积分选择 ,   速度
 		if( minFreq < 10 ) //小于10Hz以下建议用DC耦合，大于等于10HZ 用AC耦合
 		{
@@ -994,7 +1013,11 @@ int set_singleCH_vibrate_reg( int signalType , float maxFreq ,  float minFreq ) 
 	}else if( signalType == 2 ) //位移
 	{
 		LOGD( "xin:=== signalType == 2 ,  SHIFT" ); 
-		enable_CH_B_integrate( true );//使能CHA的积分
+        if(enable_CH_B_integrate( true ) == -1) //使能CHA的积分
+        {
+            return -1;
+        }
+            
 		//set_integrate( CHB ,  SHIFT );//设置积分选择 ,   默认为位移
 		if( minFreq < 10 ) //小于10Hz以下建议用DC耦合，大于等于10HZ 用AC耦合
 		{
@@ -1007,25 +1030,32 @@ int set_singleCH_vibrate_reg( int signalType , float maxFreq ,  float minFreq ) 
 	}	
 	
 	set_sample_rate(( int )maxFreq*2.56 ); //设置采样频率（包括设置ADC CLK，ADC_MODE）
-
-    set_24V( CHB ,  true );//设置24v电源的开关激励 , 默认不开启，最终版本是要设为 true
-	//set_voltage_range( CHB ,  V25 );//设置电压量程 , 默认V25 ,   V25  , V2.5 ,  V0.25	
-    
-	
+        
+    LOGD( "xin:=== test_mode = %d",test_mode );    
+    if (test_mode)  ////如果大于0表示内部  测试版本为1， 正式版本为0
+    {
+         //set_24V( CHB ,  true );//设置24v电源的开关激励 , 默认不开启，最终版本是要设为 true
+        set_voltage_range( CHB ,  V2P5 );//设置电压量程 , 默认V25 ,   V25  , V2.5 ,  V0.25 
+    }
+    else   //最终版本要打开,且adc数据提取要统一打开  *10，单个压力采集要 去掉 *10 代码
+    {
+        set_24V( CHB ,  true );//设置24v电源的开关激励 , 默认不开启，最终版本是要设为 true
+        set_voltage_range( CHB ,  V25 );//设置电压量程 , 默认V25 ,   V25  , V2.5 ,  V0.25	
+    }
+       
 	//set_triger_mode( Manual ); //设置开始采集的触发方式 ,  Manual , RTriger , AnalogRising , AnalogFalling
 
 	//set_triger_threshold( para.trig_value );//设置触发阈值----
-	//LOGD( "set_singleCH_vibrate_reg error_value = %d" , error_value );
 	LOGD( "xin:=== set_singleCH_vibrate_reg==========end" ); 	
 	sread( 0 );
 	sread( 0x8 );	
-	return error_value;	
+	return 0;	
 }
 
 int set_doubleCH_vibrate_reg( int signalType , float maxFreq ,  float minFreq )//设置振动采集寄存器
 {
 	//LOGD( "xin:=== set_doubleCH_vibrate_reg==========start" ); 
-	//spi_poweron(  );//上电后延时100 ms
+	//poweron_spi(  );//上电后延时100 ms
 	//usleep( 130000 );	//100ms
 	
 	int error_value=0;
@@ -1093,10 +1123,10 @@ int set_doubleCH_vibrate_reg( int signalType , float maxFreq ,  float minFreq )/
 
 	
 
-	//set_24V( CHA ,  true );//设置24v电源的开关激励 , 默认不开启 最终版本是要设为 true
-	//set_24V( CHB ,  true );//设置24v电源的开关激励 , 默认不开启  最终版本是要设为 true
-	//set_voltage_range( CHA ,  V25 );//设置电压量程  , 默认V25 ,   V25  , V2.5 ,  V0.25
-	//set_voltage_range( CHB ,  V25 );//设置电压量程 ,   V25  , V2.5 ,  V0.25
+	set_24V( CHA ,  true );//设置24v电源的开关激励 , 默认不开启 最终版本是要设为 true
+	set_24V( CHB ,  true );//设置24v电源的开关激励 , 默认不开启  最终版本是要设为 true
+	//set_voltage_range( CHA ,  V2P5 );//设置电压量程  , 默认V25 ,   V25  , V2.5 ,  V0.25
+	//set_voltage_range( CHB ,  V2P5 );//设置电压量程 ,   V25  , V2.5 ,  V0.25
 	
 	
 	//set_triger_mode( Manual ); //设置开始采集的触发方式 ,  Manual , RTriger , AnalogRising , AnalogFalling
@@ -1116,7 +1146,7 @@ int set_doubleCH_vibrate_reg( int signalType , float maxFreq ,  float minFreq )/
 int set_rotation_reg(  )//设置转速采集寄存器
 {
 	LOGD( "xin:=== set_rotation_reg==========start" );
-	spi_poweron(  );//上电后延时100 ms
+	poweron_spi(  );//上电后延时100 ms
 	usleep( 30000 );	//100ms
 	
 	int error_value=0;

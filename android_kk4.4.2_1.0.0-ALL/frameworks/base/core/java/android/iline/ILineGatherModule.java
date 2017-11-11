@@ -124,6 +124,7 @@ public class ILineGatherModule {
     private native void startNativeSingleAD(float data);
     private native void startNativeGroupAD(float data);
 	private native void startNativeCaliAD();
+	
     private native boolean stopNativeAD();
     private native boolean startNativeInit();
     private native int getNativeADFrequency();

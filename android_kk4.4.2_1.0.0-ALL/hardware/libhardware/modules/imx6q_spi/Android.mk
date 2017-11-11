@@ -11,9 +11,10 @@ LOCAL_SRC_FILES := imx6q_spi.c \
 				   imx6q_spi_pressure.c \
 				   imx6q_spi_vibrate.c \
 				   imx6q_spi_config.c \
+				   imx6q_common_func.c \
 				   imx6q_walg_tda.c \
 				   IIRCoeffs.c \
-				   imx6q_Spectrum.c \
+				   imx6q_spectrum.c \
 				   imx6q_iir_filter.c \
 				   imx6q_fir_filter.c \				   
 				   
