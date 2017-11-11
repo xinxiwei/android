@@ -62,7 +62,6 @@ float press_reg_fail_buf[3] = {40000,40000,40000}; // 压力采集时当寄存�
 float status_flag[2] ={10000.0,1};	//压力异常回调时的状态数组 ， 1表示数据有效个数为1
 
 int g_loop_num = 0; //底层反馈的第几波数据
-int g_ret_val = 0;  //设备文件关闭返回值
 int test_mode = 0 ; //初始化内部测试模式,会传给寄存器配置
 
 unsigned char read_60K_buf[SIZE_60K] = {0};// 读压力数据buf
@@ -87,6 +86,11 @@ int old_fd = 0;  //前一次fd
 pthread_t  c_id; // 开辟线程 c_id:计算
 sem_t   run_sem; //内部信号名  run_sem: 继续运行信号
 
+#define   MAX_SIZE  31457280
+unsigned char g_max_char_buf[ MAX_SIZE ] ={0}; //6.34M  6568576    ,26274304    31457280
+int g_smpLength = 0; //实际采集的波形长度
+int g_chNum = 0;     //振动通道个数
+ 
 
 //设备打开和关闭接口
 static int spi_device_open( const struct hw_module_t* module , const char* name , struct hw_device_t** device );
@@ -310,55 +314,28 @@ void analyze_CH_data( int adc_data ,  float *value )//解析出各通道的数�
 	}		
 }
 
-static int wdma_num =0; //重新使能DMA次数
 void common_start( )//打开设备和开始fpga采集
 {
 	int res = -1;    
-    int fd_num = 0;
     if(( fd = open( DEVICE_NAME , O_RDWR ) ) == -1 ){
         LOGD( "xin: 打开从spi设备 /dev/mxc_spidev1 失败 -- %s." , strerror( errno ) );        		
     }else{		
 		LOGD( "xin: 打开从spi设备 /dev/mxc_spidev1 成功. fd = %d" , fd );
 	}	
-    old_fd = fd;
+    /* int fd_num = 0;
+    old_fd = fd; */
 
     fcntl( fd ,  F_SETOWN ,  getpid( ) );//将当前进程PID设置为fd文件所对应驱动程序将要发送SIGIO,SIGUSR信号进程PID      
     oflags = fcntl( fd ,  F_GETFL );//获取fd的打开方式       
     fcntl( fd ,  F_SETFL ,  oflags | FASYNC );//将fd的打开方式设置为FASYNC --- 即 支持异步通知
     
     res = ioctl( fd ,  SPIDEV_IOC_RXSTREAMON ,  NULL );//启动DMA采集		
-	
-#if 0
-    if( res !=0 ) //启动DMA采集失败时，重新启动
-	{		
-        LOGD( "imx6q_spi: DMA采集-启动失败===== ,fd = %d",fd ); 
-		/* while((res != 0) || ( wdma_num < 100))
-		{
-			usleep(100000); //让DMA稳定，给一定延时申请通道
-			res = ioctl( fd ,  SPIDEV_IOC_RXSTREAMON ,  NULL );			
-			wdma_num ++;
-		} */
-    }else{
-        LOGD( "imx6q_spi: DMA采集-启动成功 ,fd = %d",fd );    
-    }
-    
-	if( wdma_num >= 100)
-	{		
-		wdma_num = 0;
-        LOGD( "imx6q_spi: 启动DMA采集尝试100次后仍失败" );
-		vibrate_callback_backup.single_ch_callback( vib_reg_fail_buf ,1 ,true);
-		start_enable_flag = 0;
-		spi_power_off(  );
-	}
-	wdma_num = 0;
-#else
 	if( res !=0 ) //启动DMA采集失败时，重新启动
 	{		
         LOGD( "imx6q_spi: DMA采集-启动失败===== ,fd = %d",fd );
-        int res2 = 0;
-        for(fd_num = old_fd-30; fd_num <= fd; fd_num++)
+        /* for(fd_num = old_fd-30; fd_num <= fd; fd_num++)
         {
-            res2 = ioctl( fd_num ,  SPIDEV_IOC_RXSTREAMOFF ,  NULL );  //停止DMA搬运 
+            int res2 = ioctl( fd_num ,  SPIDEV_IOC_RXSTREAMOFF ,  NULL );  //停止DMA搬运 
             if( res2 !=0 ) //启动DMA采集失败时，重新启动
             {		
                 LOGD( "stop_fpga_dma: DMA采集-停止失败 ,fd_num = %d",fd_num ); 
@@ -373,12 +350,11 @@ void common_start( )//打开设备和开始fpga采集
         vibrate_callback_backup.single_ch_callback( dma_fail_buf ,1 ,true);//DMA关闭异常 dma_fail_buf vib_reg_fail_buf
         start_enable_flag = 0;
         spi_power_off(  );
-        power_off_flag = 0;
+        power_off_flag = 0; */
     }else{
         LOGD( "imx6q_spi: DMA采集-启动成功 ,fd = %d",fd );    
     }
-    
-#endif
+
 	swrite( StartSampleAddr , StartSampleData );// 启动FPGA采集板	
 } 
 
@@ -483,7 +459,6 @@ void read_press_data( int signo ) // 读取压力adc 采样数据
 		stop_smp_flag = 1; // 为1时 ，停止继续读数据
 		stop_fpga_dma();	
 		sem_post( &run_sem ); 
-		
 		return ;
 	}
 	
@@ -970,16 +945,6 @@ static int start_pressure_dial( struct spictl_device_t* dev , float flag0_value 
 
 
 ////////////振动采集功能如下
-#define   MAX_SIZE  31457280
-
-unsigned char g_max_char_buf[ MAX_SIZE ] ={0}; //6.34M  6568576    ,26274304    31457280
-int g_discard_pnts = 0; //IIR滤波需要丢弃的点数
-int g_smpLength = 0; //实际采集的波形长度
-int g_waveLength = 0; //UI下发的波形长度
-int g_chNum = 0;     //振动通道个数
-int g_max_freq = 0; // 上限频率
-int g_min_freq = 0; // 下限频率 
- 
 void read_evalute_data( int signo) //读取振动评估数据    通道2, 下限10HZ, 上限1000 ,长度4096
 {	    
 	if( stop_smp_flag )
@@ -1166,25 +1131,29 @@ void *time_wave_thread( void* arg ) //时域线程
 {	    
 	timewave my_timewave;
 	my_timewave = *( struct time_wave_para* )arg;
-	
 	int i=0 ;
-    int temp_len =0;		
-	float CH_data[3]={0.0};	 //各振动通道数据
-	
+    int t_temp_len =0;		
+	float t_CH_data[3]={0.0};	 //各振动通道数据
+	int t_discard_pnts =  Get_InvalidNum((int)my_timewave.max_freq , (int)my_timewave.min_freq );  //根据上下限，获取IIR需要丢弃的点数
+    int t_max_freq = (int)my_timewave.max_freq;
+    int t_min_freq = (int)my_timewave.min_freq;
+    int t_wave_length = my_timewave.wave_length;
+	LOGD("time_wave_thread_maxfreq = %d, minfreq = %d, wavelength = %d, t_discard_pnts = %d",(int)my_timewave.max_freq,(int)my_timewave.min_freq,my_timewave.wave_length,t_discard_pnts);
+    
 	if( g_chNum == SINGLE_CH )
 	{		
-		if( g_max_freq == 500 || g_max_freq == 2500 )
+		if( t_max_freq == 500 || t_max_freq == 2500 )
 		{
-			g_smpLength = ( g_waveLength + g_discard_pnts +36 )*4;	//针对 这两个频率，需要1/4 抽点，所以采集长度 *4
-		}else if( g_max_freq == 1000 || g_max_freq == 5000 )
+			g_smpLength = ( t_wave_length + t_discard_pnts +36 )*4;	//针对 这两个频率，需要1/4 抽点，所以采集长度 *4
+		}else if( t_max_freq == 1000 || t_max_freq == 5000 )
 		{
-			g_smpLength = ( g_waveLength + g_discard_pnts +31 )*2;	//针对 这两个频率，需要1/2 抽点，所以采集长度 *2
+			g_smpLength = ( t_wave_length + t_discard_pnts +31 )*2;	//针对 这两个频率，需要1/2 抽点，所以采集长度 *2
 		}else
 		{
-			g_smpLength = ( g_waveLength + g_discard_pnts );	//实际采集的波形长度			
+			g_smpLength = ( t_wave_length + t_discard_pnts );	//实际采集的波形长度			
 		}
 
-		LOGD( "xin: 时域线程单通道g_discard_pnts = %d ,  g_waveLength = %d ,  g_smpLength = %d"  , g_discard_pnts ,  g_waveLength ,  g_smpLength );
+		LOGD( "xin: 时域线程单通道t_discard_pnts = %d ,  t_wave_length = %d ,  g_smpLength = %d"  , t_discard_pnts ,  t_wave_length ,  g_smpLength );
 				
 		//分配需要的内存
 		float *time_CH1_smp_buf = NULL; //通道1 采样数据  长度为UI配置长度 + 丢弃的点数
@@ -1209,38 +1178,38 @@ void *time_wave_thread( void* arg ) //时域线程
 		}
         
         memset(time_CH1_smp_buf , 0 ,g_smpLength*sizeof(float) );			
-	    memset(	CH_data , 0, 3*sizeof(float));	
+	    memset(	t_CH_data , 0, 3*sizeof(float));	
 		
 		for( i=0;i< g_smpLength;i++ )	//转换采集的点数	
 		{					
-			analyze_CH_data( g_smp_buf[i] , CH_data );	
-			time_CH1_smp_buf[i] = CH_data[2];				
+			analyze_CH_data( g_smp_buf[i] , t_CH_data );	
+			time_CH1_smp_buf[i] = t_CH_data[2];				
 		}		
 		
 		dis_dc_func(time_CH1_smp_buf, g_smpLength);	 //经过去直流分量算法
 		//LOGD( "xin: SINGLE_CH_结束转换数据 is : [%s]\n" ,  log_time( ) );				
 		
-		temp_len = g_smpLength; ////FIR 低通滤波，单通道，采样长度		
-		if(g_max_freq == 500 || g_max_freq == 2500 )//上限是5000 2500是1/4抽样 
+		t_temp_len = g_smpLength; ////FIR 低通滤波，单通道，采样长度		
+		if(t_max_freq == 500 || t_max_freq == 2500 )//上限是5000 2500是1/4抽样 
 		{							
-			enter_FIR_Filter( time_CH1_smp_buf  , temp_len, g_max_freq); //FIR 低通滤波
-			temp_len = g_smpLength/4 -36; //计算后长度变为1/4	
+			enter_FIR_Filter( time_CH1_smp_buf  , t_temp_len, t_max_freq); //FIR 低通滤波
+			t_temp_len = g_smpLength/4 -36; //计算后长度变为1/4	
 			
-			enter_IIR_Filter( time_CH1_smp_buf , temp_len ,g_max_freq ,g_min_freq ); //IIR 高通滤波
-		}else if( g_max_freq == 1000 || g_max_freq == 5000)	 //上限是1000 5000是1/2抽样 
+			enter_IIR_Filter( time_CH1_smp_buf , t_temp_len ,t_max_freq ,t_min_freq ); //IIR 高通滤波
+		}else if( t_max_freq == 1000 || t_max_freq == 5000)	 //上限是1000 5000是1/2抽样 
 		{				
-			enter_FIR_Filter( time_CH1_smp_buf  , g_smpLength, g_max_freq); //FIR 低通滤波
-			temp_len = g_smpLength/2 -31; //计算后长度变为1/2	
+			enter_FIR_Filter( time_CH1_smp_buf  , g_smpLength, t_max_freq); //FIR 低通滤波
+			t_temp_len = g_smpLength/2 -31; //计算后长度变为1/2	
 						
-			enter_IIR_Filter( time_CH1_smp_buf ,temp_len ,g_max_freq ,g_min_freq ); //IIR 高通滤波
+			enter_IIR_Filter( time_CH1_smp_buf ,t_temp_len ,t_max_freq ,t_min_freq ); //IIR 高通滤波
 							
 		}else  //其它上限频率只经过IIR
 		{	
-			enter_IIR_Filter( time_CH1_smp_buf , temp_len ,g_max_freq ,g_min_freq ); //IIR 高通滤波
+			enter_IIR_Filter( time_CH1_smp_buf , t_temp_len ,t_max_freq ,t_min_freq ); //IIR 高通滤波
 		}
 	
-		//LOGD("SINGLE_CH_temp_len = %d , g_discard_pnts = %d, wave_length = %d, wave_length+discard_pnts = %d" ,temp_len,g_discard_pnts,g_waveLength,g_waveLength + g_discard_pnts  );			
-		memcpy( time_CH1_smp_buf ,  &time_CH1_smp_buf[g_discard_pnts] ,  g_waveLength*sizeof( float )  );//经IIR滤波后 去掉丢弃的点							
+		//LOGD("SINGLE_CH_temp_len = %d , t_discard_pnts = %d, wave_length = %d, wave_length+discard_pnts = %d" ,t_temp_len,t_discard_pnts,t_wave_length,t_wave_length + t_discard_pnts  );			
+		memcpy( time_CH1_smp_buf ,  &time_CH1_smp_buf[t_discard_pnts] ,  t_wave_length*sizeof( float )  );//经IIR滤波后 去掉丢弃的点							
 		//LOGD( "xin: SINGLE_CH_退出算法 is : [%s]\n" ,  log_time( ) );          		
 	
     stop_daq:	
@@ -1264,7 +1233,7 @@ void *time_wave_thread( void* arg ) //时域线程
 		    return NULL;
 		}else{           	
             LOGD("xin: 时域数据线程正常回调数据");			
-			vibrate_callback_backup.single_ch_callback( time_CH1_smp_buf , g_waveLength ,  true );	/////回调时域波形
+			vibrate_callback_backup.single_ch_callback( time_CH1_smp_buf , t_wave_length ,  true );	/////回调时域波形
 		}
 		
 		LOGD( "xin: SINGLE_CH_回调结束 is : [%s]\n" ,  log_time( ) );	
@@ -1291,18 +1260,18 @@ void *time_wave_thread( void* arg ) //时域线程
 	
 	if( g_chNum == DOUBLE_CH ) //双通道内存为单通道的两倍
 	{			
-		if( g_max_freq == 500 || g_max_freq == 2500 )
+		if( t_max_freq == 500 || t_max_freq == 2500 )
 		{
-			g_smpLength = ( g_waveLength + g_discard_pnts  )*2*4;	//针对 这两个频率，需要1/4 抽点，所以采集长度 *4
-		}else if( g_max_freq == 1000 || g_max_freq == 5000 )
+			g_smpLength = ( t_wave_length + t_discard_pnts  )*2*4;	//针对 这两个频率，需要1/4 抽点，所以采集长度 *4
+		}else if( t_max_freq == 1000 || t_max_freq == 5000 )
 		{
-			g_smpLength = ( g_waveLength + g_discard_pnts )*2*2;	//针对 这两个频率，需要1/2 抽点，所以采集长度 *2
+			g_smpLength = ( t_wave_length + t_discard_pnts )*2*2;	//针对 这两个频率，需要1/2 抽点，所以采集长度 *2
 		}else
 		{
-			g_smpLength = ( g_waveLength+ g_discard_pnts )*2;	//实际采集的波形长度
+			g_smpLength = ( t_wave_length+ t_discard_pnts )*2;	//实际采集的波形长度
 		}
 	
-		//LOGD( "xin: time_wave_thread_DOUBLE_CH_g_discard_pnts = %d ,  g_waveLength = %d ,  g_smpLength = %d"  , g_discard_pnts ,  g_waveLength,  g_smpLength );        
+		//LOGD( "xin: time_wave_thread_DOUBLE_CH_t_discard_pnts = %d ,  t_wave_length = %d ,  g_smpLength = %d"  , t_discard_pnts ,  t_wave_length,  g_smpLength );        
 	    
         	
         //分配需要的内存			
@@ -1338,9 +1307,9 @@ void *time_wave_thread( void* arg ) //时域线程
 		 
 		for( i=0;i< g_smpLength;i++ )	//转换采集数据	
 		{					
-			analyze_CH_data( g_smp_buf[i] , CH_data );	
-			time_CH1_smp_buf[i] = CH_data[1];
-            time_CH2_smp_buf[i] = CH_data[2];				
+			analyze_CH_data( g_smp_buf[i] , t_CH_data );	
+			time_CH1_smp_buf[i] = t_CH_data[1];
+            time_CH2_smp_buf[i] = t_CH_data[2];				
 		}	
         for(i = 0; i<= g_smpLength/2; i++)
 		{
@@ -1350,32 +1319,32 @@ void *time_wave_thread( void* arg ) //时域线程
 		//LOGD( "xin: DOUBLE_CH_结束转换数据 is : [%s]\n" ,  log_time( ) );      	
 		
 		#if 1				
-			temp_len = g_smpLength/2; //FIR 低通滤波，原采样长度为双通道 一半			
-			if(g_max_freq == 500 || g_max_freq == 2500 )//上限是5000 2500是1/4抽样 
+			t_temp_len = g_smpLength/2; //FIR 低通滤波，原采样长度为双通道 一半			
+			if(t_max_freq == 500 || t_max_freq == 2500 )//上限是5000 2500是1/4抽样 
 			{					
-				enter_FIR_Filter( time_CH1_smp_buf  , temp_len, g_max_freq); //FIR 低通滤波
-				enter_FIR_Filter( time_CH2_smp_buf  , temp_len, g_max_freq); 					
-				temp_len = g_smpLength/2/4; //FIR 低通滤波,计算后长度变为1/4	
+				enter_FIR_Filter( time_CH1_smp_buf  , t_temp_len, t_max_freq); //FIR 低通滤波
+				enter_FIR_Filter( time_CH2_smp_buf  , t_temp_len, t_max_freq); 					
+				t_temp_len = g_smpLength/2/4; //FIR 低通滤波,计算后长度变为1/4	
 									
-				enter_IIR_Filter( time_CH1_smp_buf , temp_len , g_max_freq , g_min_freq ); //IIR 高通滤波
-				enter_IIR_Filter( time_CH2_smp_buf , temp_len , g_max_freq , g_min_freq ); //IIR 高通滤波
-			}else if( g_max_freq == 1000 || g_max_freq == 5000)	 //上限是1000 5000是1/2抽样 
+				enter_IIR_Filter( time_CH1_smp_buf , t_temp_len , t_max_freq , t_min_freq ); //IIR 高通滤波
+				enter_IIR_Filter( time_CH2_smp_buf , t_temp_len , t_max_freq , t_min_freq ); //IIR 高通滤波
+			}else if( t_max_freq == 1000 || t_max_freq == 5000)	 //上限是1000 5000是1/2抽样 
 			{
-				enter_FIR_Filter( time_CH1_smp_buf  , temp_len,  g_max_freq); //FIR 低通滤波
-				enter_FIR_Filter( time_CH2_smp_buf  , temp_len,  g_max_freq); 
-				temp_len = g_smpLength/2/2; //FIR 低通滤波,计算后长度变为1/2
+				enter_FIR_Filter( time_CH1_smp_buf  , t_temp_len,  t_max_freq); //FIR 低通滤波
+				enter_FIR_Filter( time_CH2_smp_buf  , t_temp_len,  t_max_freq); 
+				t_temp_len = g_smpLength/2/2; //FIR 低通滤波,计算后长度变为1/2
 				
-				enter_IIR_Filter( time_CH1_smp_buf , temp_len , g_max_freq , g_min_freq ); //IIR 高通滤波
-				enter_IIR_Filter( time_CH2_smp_buf , temp_len , g_max_freq , g_min_freq ); //IIR 高通滤波
+				enter_IIR_Filter( time_CH1_smp_buf , t_temp_len , t_max_freq , t_min_freq ); //IIR 高通滤波
+				enter_IIR_Filter( time_CH2_smp_buf , t_temp_len , t_max_freq , t_min_freq ); //IIR 高通滤波
 				
 			}else  //其它上限频率只经过IIR
 			{	
-				enter_IIR_Filter( time_CH1_smp_buf , temp_len , g_max_freq , g_min_freq );  //IIR 滤波长度为 采集长度的一半
-				enter_IIR_Filter( time_CH2_smp_buf , temp_len , g_max_freq , g_min_freq );
+				enter_IIR_Filter( time_CH1_smp_buf , t_temp_len , t_max_freq , t_min_freq );  //IIR 滤波长度为 采集长度的一半
+				enter_IIR_Filter( time_CH2_smp_buf , t_temp_len , t_max_freq , t_min_freq );
 			}
-			LOGD("DOUBLE_CH_temp_len = %d ,g_discard_pnts = %d,wave_length = %d, wave_length+discard_pnts = %d" ,temp_len,g_discard_pnts,g_waveLength, g_waveLength + g_discard_pnts );	
-			memcpy( time_CH1_smp_buf ,  &time_CH1_smp_buf[g_discard_pnts] ,  g_waveLength*sizeof( float ));// 返回实际需要的点数，去掉丢弃的点
-			memcpy( time_CH2_smp_buf ,  &time_CH2_smp_buf[g_discard_pnts] ,  g_waveLength*sizeof( float ));
+			LOGD("DOUBLE_CH_temp_len = %d ,t_discard_pnts = %d,wave_length = %d, wave_length+discard_pnts = %d" ,t_temp_len,t_discard_pnts,t_wave_length, t_wave_length + t_discard_pnts );	
+			memcpy( time_CH1_smp_buf ,  &time_CH1_smp_buf[t_discard_pnts] ,  t_wave_length*sizeof( float ));// 返回实际需要的点数，去掉丢弃的点
+			memcpy( time_CH2_smp_buf ,  &time_CH2_smp_buf[t_discard_pnts] ,  t_wave_length*sizeof( float ));
 		
 		#endif		
 		LOGD( "xin: DOUBLE_CH_退出算法 is : [%s]\n" ,  log_time( ) );
@@ -1402,8 +1371,8 @@ void *time_wave_thread( void* arg ) //时域线程
 			vibrate_callback_backup.double_ch_callback( invalid_buf ,  invalid_buf  , 0 ,  false ); /////回调 UI长度
             return NULL;			
 		}else{	
-            //LOGD("xin: g_waveLength = %d",g_waveLength);		
-			vibrate_callback_backup.double_ch_callback( time_CH1_smp_buf ,  time_CH2_smp_buf  , g_waveLength ,  true ); /////回调 UI长度	
+            //LOGD("xin: t_wave_length = %d",t_wave_length);		
+			vibrate_callback_backup.double_ch_callback( time_CH1_smp_buf ,  time_CH2_smp_buf  , t_wave_length ,  true ); /////回调 UI长度	
 		}
 		
 		LOGD( "xin: DOUBLE_CH_回调结束 is : [%s]\n" ,  log_time( ));					
@@ -1429,28 +1398,31 @@ void *time_wave_thread( void* arg ) //时域线程
 void *total_rend_thread( void* arg ) //总值趋势线程
 {
     totalrend my_totalrend;
-    my_totalrend = *( struct total_rend_para* )arg;	
-	
+    my_totalrend = *( struct total_rend_para* )arg;		
 	int i=0;		
-	int temp_len = 0;
-	float CH1_value[1] ={0.0};
-	float CH2_value[1] ={0.0};	
-	float CH_data[3]={0.0};
-	
+	int r_temp_len = 0;
+	float r_CH1_value[1] ={0.0};
+	float r_CH2_value[1] ={0.0};	
+	float r_CH_data[3]={0.0};
+	int r_discard_pnts =  Get_InvalidNum((int)my_totalrend.max_freq , (int)my_totalrend.min_freq );
+    int r_max_freq = (int)my_totalrend.max_freq;
+    int r_min_freq = (int)my_totalrend.min_freq;
+    int r_wave_length = my_totalrend.wave_length;
+    
 	if( g_chNum == SINGLE_CH  )
 	{		        
-        if( g_max_freq == 500 || g_max_freq == 2500 )
+        if( r_max_freq == 500 || r_max_freq == 2500 )
 		{
-			g_smpLength = ( g_waveLength + g_discard_pnts +36 )*4;	//针对 这两个频率，需要1/4 抽点，所以采集升度 *4
-		}else if( g_max_freq == 1000 || g_max_freq == 5000 )
+			g_smpLength = ( r_wave_length + r_discard_pnts +36 )*4;	//针对 这两个频率，需要1/4 抽点，所以采集升度 *4
+		}else if( r_max_freq == 1000 || r_max_freq == 5000 )
 		{
-			g_smpLength = ( g_waveLength + g_discard_pnts +31 )*2;	//针对 这两个频率，需要1/2 抽点，所以采集升度 *2
+			g_smpLength = ( r_wave_length + r_discard_pnts +31 )*2;	//针对 这两个频率，需要1/2 抽点，所以采集升度 *2
 		}else
 		{
-			g_smpLength = ( g_waveLength + g_discard_pnts );	//实际采集的波形长度
+			g_smpLength = ( r_wave_length + r_discard_pnts );	//实际采集的波形长度
 		}
 		
-		LOGD( "xin: 总值趋势线程单通道_g_discard_pnts = %d ,  g_waveLength = %d ,  g_smpLength = %d"  , g_discard_pnts ,  g_waveLength ,  g_smpLength );
+		LOGD( "xin: 总值趋势线程单通道_r_discard_pnts = %d ,  r_wave_length = %d ,  g_smpLength = %d"  , r_discard_pnts ,  r_wave_length ,  g_smpLength );
 		
 		//分配需要的内存		
 		float *rend_CH1_smp_buf =NULL; //通道1 采集数据
@@ -1474,46 +1446,46 @@ void *total_rend_thread( void* arg ) //总值趋势线程
 		}
 		
 		memset( rend_CH1_smp_buf , 0 , g_smpLength*sizeof( float ) );
-        memset(	CH_data , 0, 3*sizeof(float));	
-        CH1_value[0] = 0.0;
-		CH2_value[0] = 0.0;			
+        memset(	r_CH_data , 0, 3*sizeof(float));	
+        r_CH1_value[0] = 0.0;
+		r_CH2_value[0] = 0.0;			
 	    
 		
 	    for( i=0;i< g_smpLength;i++ )	//转换采集的点数	
 		{					
-			analyze_CH_data( g_smp_buf[i] , CH_data );	
-			rend_CH1_smp_buf[i] = CH_data[2];				
+			analyze_CH_data( g_smp_buf[i] , r_CH_data );	
+			rend_CH1_smp_buf[i] = r_CH_data[2];				
 		}    
 		dis_dc_func(rend_CH1_smp_buf,g_smpLength); //去除直流分量算法
 		//LOGD( "xin: SINGLE_CH_结束转换数据 is : [%s]\n" ,  log_time( ) );
 		
 				
-		temp_len = g_smpLength;		////FIR 低通滤波，单通道，采样长度	
-		if(g_max_freq == 500 || g_max_freq == 2500 )//上限5000 2500 是1/4抽样 
+		r_temp_len = g_smpLength;		////FIR 低通滤波，单通道，采样长度	
+		if(r_max_freq == 500 || r_max_freq == 2500 )//上限5000 2500 是1/4抽样 
 		{				
-			enter_FIR_Filter( rend_CH1_smp_buf  , temp_len, g_max_freq); //FIR 低通滤波
-			temp_len = g_smpLength/4 -36; //计算后长度变为1/4
+			enter_FIR_Filter( rend_CH1_smp_buf  , r_temp_len, r_max_freq); //FIR 低通滤波
+			r_temp_len = g_smpLength/4 -36; //计算后长度变为1/4
 			
-			enter_IIR_Filter( rend_CH1_smp_buf , temp_len , g_max_freq , g_min_freq ); //IIR 高通滤波
-		}else if( g_max_freq == 1000 || g_max_freq == 5000)	 //上限1000 5000是1/2抽样 
+			enter_IIR_Filter( rend_CH1_smp_buf , r_temp_len , r_max_freq , r_min_freq ); //IIR 高通滤波
+		}else if( r_max_freq == 1000 || r_max_freq == 5000)	 //上限1000 5000是1/2抽样 
 		{
-			enter_FIR_Filter( rend_CH1_smp_buf  , temp_len,  g_max_freq); //FIR 低通滤波
-			temp_len = g_smpLength/2 -31; //计算后长度变为1/2	
+			enter_FIR_Filter( rend_CH1_smp_buf  , r_temp_len,  r_max_freq); //FIR 低通滤波
+			r_temp_len = g_smpLength/2 -31; //计算后长度变为1/2	
 			
-			enter_IIR_Filter( rend_CH1_smp_buf , temp_len , g_max_freq , g_min_freq ); //IIR 高通滤波				
+			enter_IIR_Filter( rend_CH1_smp_buf , r_temp_len , r_max_freq , r_min_freq ); //IIR 高通滤波				
 		}else  //其它上限频率只经过IIR
 		{	               		
-			enter_IIR_Filter( rend_CH1_smp_buf , temp_len , g_max_freq , g_min_freq ); //IIR 高通滤波，长度是采样的点
+			enter_IIR_Filter( rend_CH1_smp_buf , r_temp_len , r_max_freq , r_min_freq ); //IIR 高通滤波，长度是采样的点
 		}			
 		
-		LOGD("SINGLE_CH_temp_len = %d , g_discard_pnts = %d, wave_length = %d, wave_length+discard_pnts = %d" ,temp_len,g_discard_pnts,g_waveLength, g_waveLength + g_discard_pnts  );			
+		LOGD("SINGLE_CH_r_temp_len = %d , r_discard_pnts = %d, wave_length = %d, wave_length+discard_pnts = %d" ,r_temp_len,r_discard_pnts,r_wave_length, r_wave_length + r_discard_pnts  );			
 		
-		memcpy( rend_CH1_smp_buf , &rend_CH1_smp_buf[g_discard_pnts] , g_waveLength*sizeof( float ) );//将IIR滤波后 去掉丢弃的点	
+		memcpy( rend_CH1_smp_buf , &rend_CH1_smp_buf[r_discard_pnts] , r_wave_length*sizeof( float ) );//将IIR滤波后 去掉丢弃的点	
 		//LOGD( "xin: SINGLE_CH_退出算法 is : [%s]\n" ,  log_time( ) );
         	
 		
-		CH1_value[0] = rend_value( rend_CH1_smp_buf , g_waveLength , my_totalrend.total_value_type ); //总值趋势算法           			
-		LOGD( "xin: SINGLE_CH_CH1_value = %f" , CH1_value[0] );	
+		r_CH1_value[0] = rend_value( rend_CH1_smp_buf , r_wave_length , my_totalrend.total_value_type ); //总值趋势算法           			
+		LOGD( "xin: SINGLE_CH_CH1_value = %f" , r_CH1_value[0] );	
 		
 	stop_daq:
 	    if(power_off_flag == 1) 
@@ -1535,7 +1507,7 @@ void *total_rend_thread( void* arg ) //总值趋势线程
 			return NULL;
 		}else{
 			LOGD("xin: 总值数据线程正常回调数据");
-			vibrate_callback_backup.single_ch_callback( CH1_value , sizeof( CH1_value )/sizeof( float ) ,  true ); /////回调			
+			vibrate_callback_backup.single_ch_callback( r_CH1_value , sizeof( r_CH1_value )/sizeof( float ) ,  true ); /////回调			
 		}		
 		LOGD( "xin: SINGLE_CH_回调结束 is : [%s]\n" ,  log_time( ) );	
 		
@@ -1563,18 +1535,18 @@ void *total_rend_thread( void* arg ) //总值趋势线程
 
 	if( g_chNum == DOUBLE_CH ) //双通道内存为单通道时的两倍
 	{	
-        if( g_max_freq == 500 || g_max_freq == 2500 )
+        if( r_max_freq == 500 || r_max_freq == 2500 )
 		{
-			g_smpLength = ( g_waveLength + g_discard_pnts  )*2*4;	//针对 这两个频率，需要1/4 抽点，所以采集长度 *4
-		}else if( g_max_freq == 1000 || g_max_freq == 5000 )
+			g_smpLength = ( r_wave_length + r_discard_pnts  )*2*4;	//针对 这两个频率，需要1/4 抽点，所以采集长度 *4
+		}else if( r_max_freq == 1000 || r_max_freq == 5000 )
 		{
-			g_smpLength = ( g_waveLength + g_discard_pnts  )*2*2;	//针对 这两个频率，需要1/2 抽点，所以采集长度 *2
+			g_smpLength = ( r_wave_length + r_discard_pnts  )*2*2;	//针对 这两个频率，需要1/2 抽点，所以采集长度 *2
 		}else
 		{
-			g_smpLength = ( g_waveLength + g_discard_pnts )*2;	//实际采集的波形长度
+			g_smpLength = ( r_wave_length + r_discard_pnts )*2;	//实际采集的波形长度
 		}
 		
-		LOGD( "xin: total_rend_thread_DOUBLE_CH_g_discard_pnts = %d ,  g_waveLength = %d ,  g_smpLength = %d"  , g_discard_pnts ,  g_waveLength ,  g_smpLength );
+		LOGD( "xin: total_rend_thread_DOUBLE_CH_r_discard_pnts = %d ,  r_wave_length = %d ,  g_smpLength = %d"  , r_discard_pnts ,  r_wave_length ,  g_smpLength );
        
 	    //分配需要的内存		
 		float *rend_CH1_smp_buf =NULL; //通道1 采样数据
@@ -1609,9 +1581,9 @@ void *total_rend_thread( void* arg ) //总值趋势线程
 				 		    
 		for( i=0;i< g_smpLength;i++ )			
 		{					
-			analyze_CH_data( g_smp_buf[i] , CH_data );  //调用解析通道数据的函数	
-			rend_CH1_smp_buf[i] = CH_data[1];
-			rend_CH2_smp_buf[i] = CH_data[2];
+			analyze_CH_data( g_smp_buf[i] , r_CH_data );  //调用解析通道数据的函数	
+			rend_CH1_smp_buf[i] = r_CH_data[1];
+			rend_CH2_smp_buf[i] = r_CH_data[2];
 		}			
 		for( i=0;i<=g_smpLength/2;i++ )
 		{					
@@ -1621,37 +1593,37 @@ void *total_rend_thread( void* arg ) //总值趋势线程
 		LOGD( "xin: DOUBLE_CH_数据转换结束 is : [%s]\n" ,  log_time( ) );
 		
 		#if 1				
-			temp_len = g_smpLength/2; //FIR 低通滤波，原采样长度为双通道 一半	
-			if(g_max_freq == 500 || g_max_freq == 2500 )//上限是5000 2500是1/4抽样 
+			r_temp_len = g_smpLength/2; //FIR 低通滤波，原采样长度为双通道 一半	
+			if(r_max_freq == 500 || r_max_freq == 2500 )//上限是5000 2500是1/4抽样 
 			{
-				enter_FIR_Filter( rend_CH1_smp_buf  , temp_len, g_max_freq); //FIR 低通滤波
-				enter_FIR_Filter( rend_CH2_smp_buf  , temp_len, g_max_freq); 
-				temp_len = g_smpLength/2/4; //计算后长度变为1/4
+				enter_FIR_Filter( rend_CH1_smp_buf  , r_temp_len, r_max_freq); //FIR 低通滤波
+				enter_FIR_Filter( rend_CH2_smp_buf  , r_temp_len, r_max_freq); 
+				r_temp_len = g_smpLength/2/4; //计算后长度变为1/4
 				
-				enter_IIR_Filter( rend_CH1_smp_buf , temp_len ,g_max_freq ,g_min_freq ); //IIR 高通滤波
-				enter_IIR_Filter( rend_CH2_smp_buf , temp_len ,g_max_freq ,g_min_freq ); //IIR 高通滤波
-			}else if( g_max_freq == 1000 || g_max_freq == 5000)	 //上限是1000 5000是1/2抽样 
+				enter_IIR_Filter( rend_CH1_smp_buf , r_temp_len ,r_max_freq ,r_min_freq ); //IIR 高通滤波
+				enter_IIR_Filter( rend_CH2_smp_buf , r_temp_len ,r_max_freq ,r_min_freq ); //IIR 高通滤波
+			}else if( r_max_freq == 1000 || r_max_freq == 5000)	 //上限是1000 5000是1/2抽样 
 			{				
-				enter_FIR_Filter( rend_CH1_smp_buf  , temp_len, g_max_freq); //FIR 低通滤波，原采样长度，计算后长度变为1/2
-				enter_FIR_Filter( rend_CH2_smp_buf  , temp_len, g_max_freq); //FIR 低通滤波，原采样长度，计算后长度变为1/2
-				temp_len = g_smpLength/2/2; //计算后长度变为1/2
+				enter_FIR_Filter( rend_CH1_smp_buf  , r_temp_len, r_max_freq); //FIR 低通滤波，原采样长度，计算后长度变为1/2
+				enter_FIR_Filter( rend_CH2_smp_buf  , r_temp_len, r_max_freq); //FIR 低通滤波，原采样长度，计算后长度变为1/2
+				r_temp_len = g_smpLength/2/2; //计算后长度变为1/2
 			
-				enter_IIR_Filter( rend_CH1_smp_buf , temp_len ,g_max_freq ,g_min_freq ); //IIR 高通滤波
-				enter_IIR_Filter( rend_CH2_smp_buf , temp_len ,g_max_freq ,g_min_freq ); //IIR 高通滤波
+				enter_IIR_Filter( rend_CH1_smp_buf , r_temp_len ,r_max_freq ,r_min_freq ); //IIR 高通滤波
+				enter_IIR_Filter( rend_CH2_smp_buf , r_temp_len ,r_max_freq ,r_min_freq ); //IIR 高通滤波
 			}else{  //其它上限频率只经过IIR
-				enter_IIR_Filter( rend_CH1_smp_buf , temp_len ,g_max_freq ,g_min_freq );  //IIR 滤波长度为 采集长度的一半
-				enter_IIR_Filter( rend_CH2_smp_buf , temp_len ,g_max_freq ,g_min_freq );
+				enter_IIR_Filter( rend_CH1_smp_buf , r_temp_len ,r_max_freq ,r_min_freq );  //IIR 滤波长度为 采集长度的一半
+				enter_IIR_Filter( rend_CH2_smp_buf , r_temp_len ,r_max_freq ,r_min_freq );
 			}				
 					
-			LOGD("DOUBLE_CH_temp_len = %d , g_discard_pnts = %d, wave_length = %d, wave_length+discard_pnts = %d" ,temp_len,g_discard_pnts,g_waveLength, g_waveLength + g_discard_pnts );	
-			memcpy( rend_CH1_smp_buf , &rend_CH1_smp_buf[g_discard_pnts] ,g_waveLength*sizeof( float ) );// 返回实际需要的点数，去掉丢弃的点
-			memcpy( rend_CH2_smp_buf , &rend_CH2_smp_buf[g_discard_pnts] ,g_waveLength*sizeof( float ) );			
+			LOGD("DOUBLE_CH_r_temp_len = %d , r_discard_pnts = %d, wave_length = %d, wave_length+discard_pnts = %d" ,r_temp_len,r_discard_pnts,r_wave_length, r_wave_length + r_discard_pnts );	
+			memcpy( rend_CH1_smp_buf , &rend_CH1_smp_buf[r_discard_pnts] ,r_wave_length*sizeof( float ) );// 返回实际需要的点数，去掉丢弃的点
+			memcpy( rend_CH2_smp_buf , &rend_CH2_smp_buf[r_discard_pnts] ,r_wave_length*sizeof( float ) );			
         #endif	
 		LOGD( "xin: DOUBLE_CH_退出算法 is : [%s]\n" ,  log_time( ) );
 		
-		CH1_value[0] = rend_value( rend_CH1_smp_buf , g_waveLength , my_totalrend.total_value_type );	 //计算总值趋势值 CH1 
-		CH2_value[0] = rend_value( rend_CH2_smp_buf , g_waveLength , my_totalrend.total_value_type );	 //计算总值趋势值 CH2	
-		LOGD( "xin: DOUBLE_CH_CH1_value = %f ,  CH2_value = %f" , CH1_value[0] , CH2_value[0] );				
+		r_CH1_value[0] = rend_value( rend_CH1_smp_buf , r_wave_length , my_totalrend.total_value_type );	 //计算总值趋势值 CH1 
+		r_CH2_value[0] = rend_value( rend_CH2_smp_buf , r_wave_length , my_totalrend.total_value_type );	 //计算总值趋势值 CH2	
+		LOGD( "xin: DOUBLE_CH_CH1_value = %f ,  r_CH2_value = %f" , r_CH1_value[0] , r_CH2_value[0] );				
 		
         if(power_off_flag == 1)
 		{	 
@@ -1675,7 +1647,7 @@ void *total_rend_thread( void* arg ) //总值趋势线程
 			vibrate_callback_backup.double_ch_callback( invalid_buf  , invalid_buf, 0 ,  false ); /////回调 UI长度
 			return NULL;
 		}else{		
-			vibrate_callback_backup.double_ch_callback( CH1_value , CH2_value , sizeof( CH1_value )/sizeof( float ) , true );	/////回调
+			vibrate_callback_backup.double_ch_callback( r_CH1_value , r_CH2_value , sizeof( r_CH1_value )/sizeof( float ) , true );	/////回调
 		}		
         
 		LOGD( "xin: DOUBLE_CH_回调结束 is : [%s]\n" ,  log_time( ) );		   
@@ -1702,18 +1674,21 @@ void *total_rend_thread( void* arg ) //总值趋势线程
 void *evalute_level_thread( void* arg ) //等级评估线程
 {    
     timewave my_timewave;
-    my_timewave = *( struct time_wave_para* )arg;
-	
+    my_timewave = *( struct time_wave_para* )arg;	
     int i=0;
-    int temp_len =0;	
+    int e_temp_len =0;	
 	float evalute_value[1] ={0.0};	 //0位:表示速度
-	float CH_data[3]={0.0};		
-	
-	if( g_max_freq == 1000 )
+	float e_CH_data[3]={0.0};		
+	int e_discard_pnts = Get_InvalidNum((int)my_timewave.max_freq , (int)my_timewave.min_freq ); 
+    int e_max_freq = (int)my_timewave.max_freq;
+    int e_min_freq = (int)my_timewave.min_freq;
+    int e_wave_length = my_timewave.wave_length;
+    
+	if( e_max_freq == 1000 )
 	{
-		g_smpLength = ( g_waveLength + g_discard_pnts +31 )*2;	//针对 这1000频率，需要1/2 抽点，所以采集升度 *2
+		g_smpLength = ( e_wave_length + e_discard_pnts +31 )*2;	//针对 这1000频率，需要1/2 抽点，所以采集升度 *2
 	}	
-	//LOGD( "xin: evalute_level_thread_SINGLE_CH_g_discard_pnts = %d ,  g_waveLength = %d ,  g_smpLength = %d"  , g_discard_pnts ,  g_waveLength ,  g_smpLength );
+	//LOGD( "xin: evalute_level_thread_SINGLE_CH_e_discard_pnts = %d ,  e_wave_length = %d ,  g_smpLength = %d"  , e_discard_pnts ,  e_wave_length ,  g_smpLength );
 			
     //分配需要的内存
     float *evalute_CH1_smp_buf =NULL; //振动评估 通道1 采集数据
@@ -1730,28 +1705,28 @@ void *evalute_level_thread( void* arg ) //等级评估线程
 	
 	sem_wait( &run_sem );//等待信号量	
     memset( evalute_CH1_smp_buf , 0 , g_smpLength*sizeof( float ) );  			
-    memset(	CH_data , 0, 3*sizeof(float));	
+    memset(	e_CH_data , 0, 3*sizeof(float));	
 	
 	for( i=0;i< g_smpLength;i++ )	//转换采集的点数	
 	{					
-		analyze_CH_data( g_smp_buf[i] , CH_data );	
-		evalute_CH1_smp_buf[i] = CH_data[2]; //单通道振动采集默认CHB 数据				
+		analyze_CH_data( g_smp_buf[i] , e_CH_data );	
+		evalute_CH1_smp_buf[i] = e_CH_data[2]; //单通道振动采集默认CHB 数据				
 	}	
 	dis_dc_func(evalute_CH1_smp_buf,g_smpLength);		
 	//LOGD( "xin: SINGLE_CH_结束转换数据 is : [%s]\n" ,  log_time( ) );	
 	
-	temp_len = g_smpLength; ////FIR 低通滤波，单通道，采样长度	
-	if( g_max_freq == 1000 )	 //上限是1000 是1/2抽样 
+	e_temp_len = g_smpLength; ////FIR 低通滤波，单通道，采样长度	
+	if( e_max_freq == 1000 )	 //上限是1000 是1/2抽样 
 	{
-		enter_FIR_Filter( evalute_CH1_smp_buf  , g_smpLength, g_max_freq); //FIR 低通滤波
-		temp_len = g_smpLength/2 -31; //计算后长度变为1/2	
+		enter_FIR_Filter( evalute_CH1_smp_buf  , g_smpLength, e_max_freq); //FIR 低通滤波
+		e_temp_len = g_smpLength/2 -31; //计算后长度变为1/2	
 		
-		enter_IIR_Filter( evalute_CH1_smp_buf ,temp_len , g_max_freq , g_min_freq ); //IIR 高通滤波
+		enter_IIR_Filter( evalute_CH1_smp_buf ,e_temp_len , e_max_freq , e_min_freq ); //IIR 高通滤波
 	}		
-	memcpy( evalute_CH1_smp_buf ,  &evalute_CH1_smp_buf[g_discard_pnts] ,  g_waveLength*sizeof( float ) );	
+	memcpy( evalute_CH1_smp_buf ,  &evalute_CH1_smp_buf[e_discard_pnts] ,  e_wave_length*sizeof( float ) );	
 	//LOGD( "xin: SINGLE_CH_退出算法 is : [%s]\n" ,  log_time( ) );		
 	
-	evalute_value[0] = rend_value( evalute_CH1_smp_buf ,  g_waveLength ,  0 );	//速度有效值 0表示有效值
+	evalute_value[0] = rend_value( evalute_CH1_smp_buf ,  e_wave_length ,  0 );	//速度有效值 0表示有效值
 	LOGD( "xin: 计算出速度有效值 = %f" ,  evalute_value[0] );	
 
     if( evalute_CH1_smp_buf != NULL)
@@ -1780,15 +1755,17 @@ void *evalute_level_thread( void* arg ) //等级评估线程
 void *vibrate_calib_thread( void* arg ) //振动校准线程
 {    
     timewave my_timewave;
-    my_timewave = *( struct time_wave_para* )arg;
-	
+    my_timewave = *( struct time_wave_para* )arg;	
     int i=0;
-    int temp_len =0;	
+    int v_temp_len =0;	
     float calib_value[2] ={0.0};	 //0位:表示峰峰值，1位：表示平均值
-	float CH_data[3]={0.0};		
-		
-    g_smpLength = ( g_waveLength + g_discard_pnts );	//实际采集的波形长度
-	LOGD( "xin: vibrate_calib_thread_SINGLE_CH_g_discard_pnts = %d ,  g_waveLength = %d ,  g_smpLength = %d"  , g_discard_pnts ,  g_waveLength ,  g_smpLength );
+	float v_CH_data[3]={0.0};		
+    int v_discard_pnts = Get_InvalidNum((int)my_timewave.max_freq , (int)my_timewave.min_freq ); 
+    int v_max_freq = (int)my_timewave.max_freq;
+    int v_min_freq = (int)my_timewave.min_freq;
+    int v_wave_length = my_timewave.wave_length;  
+    g_smpLength = ( v_wave_length + v_discard_pnts );	//实际采集的波形长度
+	LOGD( "xin: vibrate_calib_thread_SINGLE_CH_v_discard_pnts = %d ,  v_wave_length = %d ,  g_smpLength = %d"  , v_discard_pnts ,  v_wave_length ,  g_smpLength );
 			
     //分配需要的内存
     float *calib_CH1_smp_buf =NULL; //振动校准  通道1 采集数据
@@ -1805,22 +1782,22 @@ void *vibrate_calib_thread( void* arg ) //振动校准线程
 	
 	sem_wait( &run_sem );//等待信号量	
     memset( calib_CH1_smp_buf , 0 , g_smpLength*sizeof( float ) );  			
-    memset(	CH_data , 0, 3*sizeof(float));	
+    memset(	v_CH_data , 0, 3*sizeof(float));	
 	
 	for( i=0;i< g_smpLength;i++ )	//转换采集的点数	
 	{					
-		analyze_CH_data( g_smp_buf[i] , CH_data );	
-		calib_CH1_smp_buf[i] = CH_data[2]; //单通道振动采集默认CHB 数据				
+		analyze_CH_data( g_smp_buf[i] , v_CH_data );	
+		calib_CH1_smp_buf[i] = v_CH_data[2]; //单通道振动采集默认CHB 数据				
 	}	
 	dis_dc_func(calib_CH1_smp_buf,g_smpLength);		
 	
-	temp_len = g_smpLength; ////FIR 低通滤波，单通道，采样长度	
+	v_temp_len = g_smpLength; ////FIR 低通滤波，单通道，采样长度	
 	
-    enter_IIR_Filter( calib_CH1_smp_buf , temp_len , g_max_freq , g_min_freq ); //IIR 高通滤波，长度是采样的点
-	memcpy( calib_CH1_smp_buf ,  &calib_CH1_smp_buf[g_discard_pnts] ,  g_waveLength*sizeof( float ) );	
+    enter_IIR_Filter( calib_CH1_smp_buf , v_temp_len , v_max_freq , v_min_freq ); //IIR 高通滤波，长度是采样的点
+	memcpy( calib_CH1_smp_buf ,  &calib_CH1_smp_buf[v_discard_pnts] ,  v_wave_length*sizeof( float ) );	
 	
-	calib_value[0] = rend_value( calib_CH1_smp_buf ,  g_waveLength ,  2 );	//峰峰值 2
-	calib_value[1] = rend_value( calib_CH1_smp_buf ,  g_waveLength ,  3 );	//平均值 3
+	calib_value[0] = rend_value( calib_CH1_smp_buf ,  v_wave_length ,  2 );	//峰峰值 2
+	calib_value[1] = rend_value( calib_CH1_smp_buf ,  v_wave_length ,  3 );	//平均值 3
         
 	LOGD( "xin: 计算出校准值峰峰值 = %f, 平均值 = %f\n" ,  calib_value[0], calib_value[1]);	
 
@@ -1847,33 +1824,26 @@ static int start_vibrate_CH_timewave( struct spictl_device_t* dev ,  int ch_num 
    LOGD("xin: start_vibrate_CH_timewave_start_num = %d",start_num);
    if(start_num != 0)
    {
-      LOGD("xin: start_vibrate_CH_timewave stop未完全结束，此时要重新采集");
+      /* LOGD("xin: start_vibrate_CH_timewave stop未完全结束，此时要重新采集");
       start_num =0;
       power_off_flag = 0;
       vibrate_callback_backup.single_ch_callback( dma_fail_buf ,1 ,true);//DMA关闭异常
       start_enable_flag = 0;
-      spi_power_off(  );	
+      spi_power_off(  ); */	
       
 	  return 0; 
    }
     memset(read_60K_buf,0, SIZE_60K*sizeof(unsigned char));
     memset(g_max_char_buf ,0, MAX_SIZE*sizeof(unsigned char)); 
     
-	int reg_ret_value =0;
 	g_chNum = ch_num;	 
-	stop_smp_flag = 0;
-	g_discard_pnts = 0;
-	g_loop_num =0;	
-	
-	g_waveLength = 0;	
-    g_max_freq = (int)tWave.max_freq;
-	g_min_freq = (int)tWave.min_freq;
-	g_waveLength = tWave.wave_length;
-    test_mode = tWave.version_mode;
-    g_discard_pnts =  Get_InvalidNum(g_max_freq , g_min_freq );  //根据上下限，获取IIR需要丢弃的点数
+	stop_smp_flag = 0;	
+	g_loop_num = 0;
+	g_smpLength = 0;
+    test_mode = tWave.version_mode;   
     
     LOGD("xin: 点击时域开始时 power_off_flag = %d,start_enable_flag = %d, restart_power_on_flag= %d, can_start_flag = %d , thread_finished_flag = %d",power_off_flag,start_enable_flag,restart_power_on_flag,can_start_flag,thread_finished_flag);
-	LOGD( "xin: start_vibrate_CH_timewave_ch_num = %d , data_type = %d , signal_type = %d ,  min_freq = %d , max_freq = %d , wave_length = %d, test_mode =%d", ch_num ,  tWave.data_type ,  tWave.signal_type ,  g_min_freq ,  g_max_freq  , g_waveLength, test_mode );
+	LOGD( "xin: start_vibrate_CH_timewave_ch_num = %d , data_type = %d , signal_type = %d ,  min_freq = %d , max_freq = %d , wave_length = %d, test_mode =%d", ch_num ,  tWave.data_type ,  tWave.signal_type ,  (int)tWave.min_freq ,  (int)tWave.max_freq  , tWave.wave_length, test_mode );
     
 	if(start_enable_flag == 1) // 1表示前一个start 线程还没有结束，此时不再响应新的start， 为0时表示start线程结束了
 	{
@@ -1886,7 +1856,7 @@ static int start_vibrate_CH_timewave( struct spictl_device_t* dev ,  int ch_num 
     if (can_start_flag == 1)
 	    return 0;    
     
-	if( !is_right_length(g_waveLength)) //判断下发的采样长度是否支持
+	if( !is_right_length(tWave.wave_length)) //判断下发的采样长度是否支持
 	{
 		start_enable_flag = 0; //用于波形长度为0时，防止再手动停止时再采集时 ，start_enable_flag = 0， 直接 回调false给上层，所以此处要置0
 		return 0;
@@ -1897,11 +1867,11 @@ static int start_vibrate_CH_timewave( struct spictl_device_t* dev ,  int ch_num 
 		;
 	}else{
 		poweron_spi(  );				
-		
+		int reg_ret_value =0;
 		if( g_chNum == SINGLE_CH )	
-			reg_ret_value = set_singleCH_vibrate_reg( tWave.signal_type , g_max_freq , g_min_freq);//设置单通道采集寄存器	
+			reg_ret_value = set_singleCH_vibrate_reg( tWave.signal_type , (int)tWave.max_freq , (int)tWave.min_freq);//设置单通道采集寄存器	
 		if( g_chNum == DOUBLE_CH ) 
-			reg_ret_value = set_doubleCH_vibrate_reg( tWave.signal_type , g_max_freq , g_min_freq );//设置双通道采集寄存器
+			reg_ret_value = set_doubleCH_vibrate_reg( tWave.signal_type , (int)tWave.max_freq , (int)tWave.min_freq );//设置双通道采集寄存器
 		
 		if( reg_ret_value == -1)
 		{
@@ -1950,21 +1920,16 @@ static int start_vibrate_CH_totalrend( struct spictl_device_t* dev ,  int ch_num
 	memset(g_max_char_buf ,0, MAX_SIZE*sizeof(unsigned char));
 	
     usleep( tRend.interval_time*1000*1000 ); //下次采集间隔时间  微秒为单位 
-	int reg_ret_value =0;
-    g_chNum = ch_num;	
-	g_discard_pnts = 0;
-	g_loop_num =0;	
-	stop_smp_flag = 0;
-	g_waveLength = 0;
 	
-    g_max_freq = (int)tRend.max_freq;
-    g_min_freq = (int)tRend.min_freq;
-	g_waveLength = tRend.wave_length;
+    g_chNum = ch_num;	
+	stop_smp_flag = 0;	
+	g_loop_num = 0;
+	g_smpLength = 0;	
     test_mode = tRend.version_mode;
-    g_discard_pnts =  Get_InvalidNum( g_max_freq ,  g_min_freq ); 
+    
     
 	LOGD("xin: 点击总值开始时 start_enable_flag = %d, restart_power_on_flag= %d, can_start_flag = %d , thread_finished_flag = %d", start_enable_flag,restart_power_on_flag,can_start_flag,thread_finished_flag);
-	LOGD( "xin: start_vibrate_CH_totalrend_ch_num = %d , data_type = %d , signal_type = %d ,  min_freq = %d , max_freq = %d , wave_length = %d ,interval_time = %f ,test_mode = %d", ch_num ,  tRend.data_type ,  tRend.signal_type ,  g_min_freq ,  g_max_freq  , g_waveLength, tRend.interval_time,test_mode);	
+	LOGD( "xin: start_vibrate_CH_totalrend_ch_num = %d , data_type = %d , signal_type = %d ,  min_freq = %d , max_freq = %d , wave_length = %d ,interval_time = %f ,test_mode = %d", ch_num ,  tRend.data_type ,  tRend.signal_type ,  (int)tRend.min_freq ,  (int)tRend.max_freq  , tRend.wave_length, tRend.interval_time,test_mode);	
     
 	if(start_enable_flag == 1)
 	{
@@ -1976,7 +1941,7 @@ static int start_vibrate_CH_totalrend( struct spictl_device_t* dev ,  int ch_num
 	if (can_start_flag == 1)
 	    return 0;
 	
-	if( !is_right_length(g_waveLength))
+	if( !is_right_length(tRend.wave_length))
 	{
 		start_enable_flag = 0; //用于波形长度为0时，防止再手动停止时再采集时 ，start_enable_flag = 0， 直接 回调false给上层，所以此处要置0
 		return 0;
@@ -1986,11 +1951,12 @@ static int start_vibrate_CH_totalrend( struct spictl_device_t* dev ,  int ch_num
 	{
 		;
 	}else{
-		poweron_spi(  );		
+		poweron_spi(  );	
+        int reg_ret_value =0;
 		if( g_chNum ==SINGLE_CH )	
-			reg_ret_value = set_singleCH_vibrate_reg( tRend.signal_type , g_max_freq , g_min_freq);//设置单通道采集寄存器
+			reg_ret_value = set_singleCH_vibrate_reg( tRend.signal_type , (int)tRend.max_freq , (int)tRend.min_freq);//设置单通道采集寄存器
 		if( g_chNum == DOUBLE_CH ) 
-			reg_ret_value = set_doubleCH_vibrate_reg( tRend.signal_type , g_max_freq , g_min_freq );//设置双通道采集寄存器
+			reg_ret_value = set_doubleCH_vibrate_reg( tRend.signal_type , (int)tRend.max_freq , (int)tRend.min_freq );//设置双通道采集寄存器
 				
 		if( reg_ret_value == -1)
 		{
@@ -2036,25 +2002,17 @@ static int start_vibrate_evalute_level( struct spictl_device_t* dev , struct tim
     }
     memset(read_60K_buf,0,SIZE_60K*sizeof(unsigned char));
     memset(g_max_char_buf ,0, MAX_SIZE*sizeof(unsigned char));
-	int reg_ret_value = 0;
-	g_discard_pnts = 0;
-	g_loop_num = 0;
-	g_smpLength = 0;
-	g_waveLength = 0;
-	stop_smp_flag = 0;
-    
-	g_max_freq = (int)tWave.max_freq;
-    g_min_freq = (int)tWave.min_freq;
-	g_waveLength = tWave.wave_length;
-	test_mode = tWave.version_mode;
-    g_discard_pnts = Get_InvalidNum( g_max_freq , g_min_freq );    	  
-    	
 	
-	LOGD( "\nxin: start_vibrate_evalute_level_signal_type = %d ,  min_freq = %d , max_freq = %d , wave_length = %d ,test_mode = %d",	 tWave.signal_type ,  g_min_freq ,  g_max_freq  , g_waveLength, test_mode);	
+	stop_smp_flag = 0;	
+	g_loop_num = 0;
+	g_smpLength = 0;	
+	test_mode = tWave.version_mode;
+	
+	LOGD( "\nxin: start_vibrate_evalute_level_signal_type = %d ,  min_freq = %d , max_freq = %d , wave_length = %d ,test_mode = %d",	 tWave.signal_type ,  (int)tWave.min_freq ,  (int)tWave.max_freq  , tWave.wave_length, test_mode);	
 	 
-	if( !is_right_length(g_waveLength))
+	if( !is_right_length(tWave.wave_length))
 	{
-		LOGD("xin: 下发的波形长度 tWave.wave_length = %d",g_waveLength);
+		LOGD("xin: 下发的波形长度 tWave.wave_length = %d",tWave.wave_length);
 		return 0;
 	}
 	
@@ -2062,7 +2020,7 @@ static int start_vibrate_evalute_level( struct spictl_device_t* dev , struct tim
 	
 	poweron_spi(  );	
 	
-	reg_ret_value = set_singleCH_vibrate_reg( tWave.signal_type , g_max_freq , g_min_freq );//设置单通道采集寄存器，数据类型为 速度时域波形
+	int reg_ret_value = set_singleCH_vibrate_reg( tWave.signal_type , (int)tWave.max_freq , (int)tWave.min_freq );//设置单通道采集寄存器，数据类型为 速度时域波形
 		
 	if( reg_ret_value == -1)
 	{
@@ -2094,26 +2052,18 @@ static int start_vibrate_calibration( struct spictl_device_t* dev ,struct time_w
 	LOGD( "xin: 响应校准点击开始 [%s]\n" ,  log_time( ) ); 	
     
     stop_smp_flag = 0;	
-	g_discard_pnts = 0; 
 	g_loop_num = 0;
-	g_smpLength = 0;
-	g_waveLength = 0;
-	
-    g_max_freq = (int)tWave.max_freq;//40K
-    g_min_freq = (int)tWave.min_freq;//DC 5HZ, AC 10HZ
-	g_waveLength = tWave.wave_length;//16384
-    g_discard_pnts = Get_InvalidNum( g_max_freq , g_min_freq ); 
-
+	g_smpLength = 0;	
 	test_mode = tWave.version_mode;
     
-	LOGD("\nxin: start_vibrate_calibration_signal_type= %d ,min_freq = %d ,max_freq = %d ,wave_length = %d ",tWave.signal_type,g_min_freq,g_max_freq,g_waveLength);	
+	LOGD("\nxin: start_vibrate_calibration_signal_type= %d ,min_freq = %d ,max_freq = %d ,wave_length = %d ",tWave.signal_type,(int)tWave.min_freq,(int)tWave.max_freq,tWave.wave_length);	
 
 	poweron_spi( );	  
-    set_singleCH_vibrate_reg( tWave.signal_type , g_max_freq , g_min_freq);//设置单通道采集寄存器，数据类型为 速度时域波形
+    set_singleCH_vibrate_reg( tWave.signal_type , (int)tWave.max_freq , (int)tWave.min_freq);//设置单通道采集寄存器，数据类型为 速度时域波形
        	
 	usleep(2000000); //用于上层时域波形不丢波形数据，在这里直接延时2S,让硬件预热稳定
 	common_start( );
-	sem_init( &run_sem ,  0 ,  0 );		
+	sem_init( &run_sem ,0 ,0 );		
 
 	pthread_create( &c_id, NULL, vibrate_calib_thread, ( void* )&tWave );	
 	
@@ -2164,14 +2114,17 @@ void *freq_wave_thread( void* arg ) //频域线程
 	my_freqwave = *( struct freq_wave_para* )arg;		
 	int i=0 , j=0 , k=0;	
 	float CH_data[3]={0.0};
-	
+	int f_discard_pnts = Get_InvalidNum((int)my_freqwave.max_freq , (int)my_freqwave.min_freq ); 
+    int f_max_freq = (int)my_freqwave.max_freq;
+    int f_min_freq = (int)my_freqwave.min_freq;
+    int f_wave_length = my_freqwave.spectra_num*2.56;//波形长度 = 频谱线数*2.56	
+    
 	if( g_chNum == SINGLE_CH ) 
 	{
-	    g_waveLength = my_freqwave.spectra_num*2.56; //波形长度 = 频谱线数*2.56	
-		g_smpLength = my_freqwave.spectra_num*2.56 + g_discard_pnts;	//实际采集的波形长度				
+		g_smpLength = f_wave_length + f_discard_pnts;	//实际采集的波形长度				
 				
-		LOGD( "xin: freq_wave_thread_SINGLE_CH_g_discard_pnts = %d ,  spectra_num*2.56 = %d ,  g_smpLength = %d"  , g_discard_pnts ,  g_waveLength ,  g_smpLength );	
-		if( g_waveLength < 0 )
+		LOGD( "xin: freq_wave_thread_SINGLE_CH_f_discard_pnts = %d ,  spectra_num*2.56 = %d ,  g_smpLength = %d"  , f_discard_pnts ,  f_wave_length ,  g_smpLength );	
+		if( f_wave_length < 0 )
 		{
 			return NULL;
 		}
@@ -2191,13 +2144,13 @@ void *freq_wave_thread( void* arg ) //频域线程
 		float *freq_CH1_IIR_buf =NULL; //通道1 IIR滤波后数据
 		if( freq_CH1_IIR_buf == NULL)
 		{
-			freq_CH1_IIR_buf =( float* )malloc( g_waveLength*sizeof( float ) );
+			freq_CH1_IIR_buf =( float* )malloc( f_wave_length*sizeof( float ) );
 			if( freq_CH1_IIR_buf == NULL )
 			{
 				LOGD( "freq_CH1_IIR_buf 分配内存失败！" );
 				exit( EXIT_FAILURE );		
 			}
-			memset( freq_CH1_IIR_buf , 0 , g_waveLength*sizeof( float ) );
+			memset( freq_CH1_IIR_buf , 0 , f_wave_length*sizeof( float ) );
 		}
 		
 		
@@ -2233,20 +2186,20 @@ void *freq_wave_thread( void* arg ) //频域线程
 						
 			enter_IIR_Filter( freq_CH1_smp_buf , g_smpLength ,( int )my_freqwave.max_freq ,( int )my_freqwave.min_freq ); //IIR 高通滤波，长度是采样长度
 			
-			memcpy( freq_CH1_IIR_buf , &freq_CH1_smp_buf[g_discard_pnts] , g_waveLength*sizeof( float ) );
+			memcpy( freq_CH1_IIR_buf , &freq_CH1_smp_buf[f_discard_pnts] , f_wave_length*sizeof( float ) );
 			
-			fft_alg_entry2( freq_CH1_IIR_buf , g_waveLength , 0 , 0 , 0  ); //0默认不加窗，平均方式，平均次数都为0，不进行
-			vibrate_callback_backup.single_ch_callback( freq_CH1_IIR_buf ,  g_waveLength/2 ,  true );	/////频谱回调 长度是实际UI长度一半								    
+			fft_alg_entry2( freq_CH1_IIR_buf , f_wave_length , 0 , 0 , 0  ); //0默认不加窗，平均方式，平均次数都为0，不进行
+			vibrate_callback_backup.single_ch_callback( freq_CH1_IIR_buf ,  f_wave_length/2 ,  true );	/////频谱回调 长度是实际UI长度一半								    
 			stop_smp_flag = 0;		
 		}		
 	}
 		
 	if( g_chNum == DOUBLE_CH ) //双通道内存为单通道时的两倍
 	{	       
-	    g_waveLength =( my_freqwave.spectra_num*2.56 )*2; //波形长度 = 频谱线数*2.56
-		g_smpLength =( my_freqwave.spectra_num*2.56 + g_discard_pnts )*2;	//实际采集的波形长度        
-		LOGD( "xin:freq_wave_thread_DOUBLE_CH_g_discard_pnts = %d ,  spectra_num*2.56 = %d ,  g_smpLength = %d"  , g_discard_pnts ,  g_waveLength/2 ,  g_smpLength );
-		if( g_waveLength < 0 )
+	    f_wave_length =( my_freqwave.spectra_num*2.56 )*2; //波形长度 = 频谱线数*2.56
+		g_smpLength =( my_freqwave.spectra_num*2.56 + f_discard_pnts )*2;	//实际采集的波形长度        
+		LOGD( "xin:freq_wave_thread_DOUBLE_CH_f_discard_pnts = %d ,  spectra_num*2.56 = %d ,  g_smpLength = %d"  , f_discard_pnts ,  f_wave_length/2 ,  g_smpLength );
+		if( f_wave_length < 0 )
 		{
 			return NULL;
 		}
@@ -2303,25 +2256,25 @@ void *freq_wave_thread( void* arg ) //频域线程
 		float *freq_CH1_IIR_buf =NULL; //通道1 IIR返回后的数据
 		if( freq_CH1_IIR_buf == NULL)
 		{
-			freq_CH1_IIR_buf =( float* )malloc(( g_waveLength/2 )*sizeof( float ) );
+			freq_CH1_IIR_buf =( float* )malloc(( f_wave_length/2 )*sizeof( float ) );
 			if( freq_CH1_IIR_buf == NULL )
 			{
 				LOGD( "freq_CH1_IIR_buf 分配内存失败！" );
 				exit( EXIT_FAILURE );		
 			}
-			memset( freq_CH1_IIR_buf , 0 ,( g_waveLength/2 )*sizeof( float ) );	
+			memset( freq_CH1_IIR_buf , 0 ,( f_wave_length/2 )*sizeof( float ) );	
 		}
 		
 		float *freq_CH2_IIR_buf =NULL; //通道2 IIR返回后的数据
 		if( freq_CH2_IIR_buf == NULL)
 		{
-			freq_CH2_IIR_buf =( float* )malloc(( g_waveLength/2 )*sizeof( float ) );
+			freq_CH2_IIR_buf =( float* )malloc(( f_wave_length/2 )*sizeof( float ) );
 			if( freq_CH2_IIR_buf == NULL )
 			{
 				LOGD( "freq_CH2_IIR_buf 分配内存失败！" );
 				exit( EXIT_FAILURE );		
 			}
-			memset( freq_CH2_IIR_buf , 0 ,( g_waveLength/2 )*sizeof( float ) );		
+			memset( freq_CH2_IIR_buf , 0 ,( f_wave_length/2 )*sizeof( float ) );		
 		}		
 		
 		while( 1 )
@@ -2383,13 +2336,13 @@ void *freq_wave_thread( void* arg ) //频域线程
 			enter_IIR_Filter( freq_CH1_smp_buf1 , g_smpLength/2 ,( int )my_freqwave.max_freq ,( int )my_freqwave.min_freq );  //IIR 滤波长度为 采集长度的一半
 			enter_IIR_Filter( freq_CH2_smp_buf2 , g_smpLength/2 ,( int )my_freqwave.max_freq ,( int )my_freqwave.min_freq );
          							
-            memcpy( freq_CH1_IIR_buf , &freq_CH1_smp_buf1[g_discard_pnts] ,( g_waveLength/2 )*sizeof( float ) );
-            memcpy( freq_CH2_IIR_buf , &freq_CH2_smp_buf2[g_discard_pnts] ,( g_waveLength/2 )*sizeof( float ) );			
+            memcpy( freq_CH1_IIR_buf , &freq_CH1_smp_buf1[f_discard_pnts] ,( f_wave_length/2 )*sizeof( float ) );
+            memcpy( freq_CH2_IIR_buf , &freq_CH2_smp_buf2[f_discard_pnts] ,( f_wave_length/2 )*sizeof( float ) );			
 						
-			fft_alg_entry2( freq_CH1_IIR_buf , g_waveLength/2 , 0 , 0 , 0  );//0默认不加窗，平均方式，平均次数都为0，不进行			
-			fft_alg_entry2( freq_CH2_IIR_buf , g_waveLength/2 , 0 , 0 , 0  );	//0默认不加窗，平均方式，平均次数都为0，不进行		
+			fft_alg_entry2( freq_CH1_IIR_buf , f_wave_length/2 , 0 , 0 , 0  );//0默认不加窗，平均方式，平均次数都为0，不进行			
+			fft_alg_entry2( freq_CH2_IIR_buf , f_wave_length/2 , 0 , 0 , 0  );	//0默认不加窗，平均方式，平均次数都为0，不进行		
 			
-			vibrate_callback_backup.double_ch_callback( freq_CH1_IIR_buf ,  freq_CH2_IIR_buf ,  g_waveLength/4 ,  true );	/////频谱只回调 前一半数据							
+			vibrate_callback_backup.double_ch_callback( freq_CH1_IIR_buf ,  freq_CH2_IIR_buf ,  f_wave_length/4 ,  true );	/////频谱只回调 前一半数据							
 			stop_smp_flag = 0;		
 		}		
 	}      		
@@ -2403,13 +2356,13 @@ static int start_vibrate_CH_freqwave( struct spictl_device_t* dev , int ch_num ,
 	g_chNum ,  fWave.data_type ,  fWave.signal_type ,  fWave.min_freq ,  fWave.max_freq  , fWave.spectra_num ,  fWave.average_num ,  fWave.average_mode ,  fWave.window_type , fWave.range_mode , fWave.trig_mode , fWave.range_accel_value );
 	 
 	if( g_chNum == SINGLE_CH )	
-		set_singleCH_vibrate_reg( fWave.signal_type , fWave.max_freq , fWave.min_freq);//设置单通道采集寄存器	
+		set_singleCH_vibrate_reg( fWave.signal_type , (int)fWave.max_freq , (int)fWave.min_freq);//设置单通道采集寄存器	
 	if( g_chNum == DOUBLE_CH ) 
-		set_doubleCH_vibrate_reg( fWave.signal_type , fWave.max_freq , fWave.min_freq );//设置双通道采集寄存器	
+		set_doubleCH_vibrate_reg( fWave.signal_type , (int)fWave.max_freq , (int)fWave.min_freq );//设置双通道采集寄存器	
 
 	sem_init( &run_sem ,  0 ,  0 );
 	
-    g_discard_pnts =  Get_InvalidNum(( int )fWave.max_freq , ( int )fWave.min_freq ); 
+    
    	
     exit_thread_flag = false;	
 	post_flag = true;
