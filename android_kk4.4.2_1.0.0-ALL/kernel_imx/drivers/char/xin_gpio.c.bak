@@ -1,0 +1,152 @@
+#include <linux/module.h>               /* For module specific items */  
+#include <linux/moduleparam.h>          /* For new moduleparam's */  
+#include <linux/types.h>                /* For standard types (like size_t) */  
+#include <linux/errno.h>                /* For the -ENODEV/... values */  
+#include <linux/kernel.h>               /* For printk/panic/... */  
+#include <linux/fs.h>                   /* For file operations */
+#include <linux/ioport.h>               /* For io-port access */  
+#include <linux/platform_device.h>      /* For platform_driver framework */  
+#include <linux/init.h>                 /* For __init/__exit/... */  
+#include <linux/uaccess.h>              /* For copy_to_user/put_user/... */  
+#include <linux/io.h>                   /* For inb/outb/... */  
+#include <linux/gpio.h>  
+#include <linux/device.h>  
+#include <linux/cdev.h>  
+#include <linux/slab.h>               /*kamlloc */  
+//#include <asm-generic/ioctl.h>  
+   
+ //ioctl 命令码建议规范化。  
+#define LOW                     (0)
+#define HIGH                    (1)
+
+#define IMX_GPIO_NR(bank, nr)	(((bank) - 1) * 32 + (nr))
+#define SABRESD_KYB_LEDEN       IMX_GPIO_NR(6, 11) 
+#define KYB_LED_CTR        (9) 
+  
+static int  major =0;  
+static struct class *gpioctr_class;  
+struct cdev_imx6q {  
+    struct cdev cdev;  
+};  
+struct cdev_imx6q *imx6q_dev;  
+  
+static int imx6q_ioctl(struct file* filp,unsigned int cmd,unsigned long argv)  
+{  
+    printk(KERN_INFO "entry kernel.... \n");  
+    int err =0;
+  
+    switch(cmd)  
+    {  
+        
+        case KYB_LED_CTR:
+            if(argv>0){
+				
+                err = gpio_direction_output(SABRESD_KYB_LEDEN, 0);
+                gpio_set_value(SABRESD_KYB_LEDEN,1);
+                printk("keyboard_backlight control pin turn on!\r\n");
+            }else{
+		
+                err = gpio_direction_output(SABRESD_KYB_LEDEN, 0);                
+		gpio_set_value(SABRESD_KYB_LEDEN,0);
+                printk("keyboard_backlight control pin turn off!\r\n");
+            }
+            break;		
+        default:  
+            return -EINVAL;  
+    }  
+    return 0;  
+}  
+  
+  
+//open  
+static int imx6q_gpio_open(struct inode* i_node,struct file* filp)  
+{  
+    printk(KERN_INFO "open init.... \n");  
+    int err;  
+    err = gpio_request(SABRESD_KYB_LEDEN, "open KB_BL_CTR");  //请求gpkcon0[4]控制权。  
+    if(err<0)  
+    {  
+        printk(KERN_INFO "gpio request faile \n");  
+        return err;  
+    }  
+    gpio_direction_output(SABRESD_KYB_LEDEN, HIGH);  // 设置gpkcon0[4] 为输出模式  
+      
+    return 0;  
+}  
+  
+//close  
+static void imx6q_gpio_close(struct inode* i_node,struct file* filp)  
+{  
+printk(KERN_INFO "close init \n");  
+    gpio_free(SABRESD_KYB_LEDEN); //释放  
+    return ;  
+}  
+  
+/* file operations */  
+struct file_operations fops={  
+    .owner  = THIS_MODULE,  
+    .open   = imx6q_gpio_open,  
+    .unlocked_ioctl = imx6q_ioctl, 
+    .release= imx6q_gpio_close,  
+};  
+  
+static int __init imx6q_gpio_init(void)  
+{  
+    printk(KERN_INFO "init .... \n");  
+    dev_t dev_no;  
+    int result,err; 
+
+ 
+    err = alloc_chrdev_region(&dev_no,0,1,"devpwm_ctl");   
+    if(err<0)  
+    {  
+        printk(KERN_INFO "ERROR\n");  
+        return err;  
+    }  
+    major = MAJOR(dev_no);  
+    imx6q_dev = kmalloc(sizeof(struct cdev_imx6q),GFP_KERNEL);  
+    if(!imx6q_dev)  
+    {  
+        result = -ENOMEM;  
+        goto fail_malloc;  
+    }  
+    memset(imx6q_dev,0,sizeof(imx6q_dev));  
+      
+    /* major = register_chrdev(0, "led", &led_fops);*/
+
+    cdev_init(&imx6q_dev->cdev,&fops); 
+    imx6q_dev->cdev.owner = THIS_MODULE;  
+    result = cdev_add(&imx6q_dev->cdev,dev_no,1); 
+    if(result <0)  
+    {   printk(KERN_INFO "error\n");  
+        goto fail_add;  
+    }  
+
+
+    gpioctr_class = class_create(THIS_MODULE,"imx6qpwrctr");   
+    device_create(gpioctr_class,NULL,MKDEV(major,0),NULL,"devpwerctr"); 
+    return 0;  
+fail_add:  
+    kfree(imx6q_dev);  
+fail_malloc:  
+    unregister_chrdev_region(dev_no,1);  
+    return result;    
+}  
+  
+static void __exit imx6q_gpio_exit(void)  
+{  
+    dev_t dev_no=MKDEV(major,0);  
+  
+    unregister_chrdev_region(dev_no,1);  
+    cdev_del(&imx6q_dev->cdev);  
+    kfree(imx6q_dev);  
+    device_destroy(gpioctr_class,dev_no);  
+    class_destroy(gpioctr_class);  
+    printk(KERN_INFO "exit........ \n");  
+}  
+
+module_init(imx6q_gpio_init);  
+module_exit(imx6q_gpio_exit);  
+MODULE_AUTHOR("xinxiwei");  
+MODULE_DESCRIPTION("ARM test led");  
+MODULE_LICENSE("GPL");
