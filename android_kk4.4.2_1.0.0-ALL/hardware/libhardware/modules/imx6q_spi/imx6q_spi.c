@@ -55,21 +55,16 @@ int fd = -1; //从SPI设备文件
 int *psample_buf  = NULL; //最终采样的原始数据
 int *g_smp_buf = NULL;  //全局采集的数据
 float invalid_buf[2] = {0.0}; // power off时回调的假buf,供接口使用，实际无意义
-
 float vib_reg_fail_buf[1] = {10001}; // 振动采集时当寄存器配置失败时，供上面app用
 float dma_fail_buf[1] = {10002}; // 振动采集时dma打开异常不成对开关，供上面app用
 float press_reg_fail_buf[3] = {40000,40000,40000}; // 压力采集时当寄存器配置失败时，供上面app用
 float status_flag[2] ={10000.0,1};	//压力异常回调时的状态数组 ， 1表示数据有效个数为1
-
-int g_loop_num = 0; //底层反馈的第几波数据
-int test_mode = 0 ; //初始化内部测试模式,会传给寄存器配置
+float feature_ret_value[FEATURE_NUM] = {0.0}; //15个特征值
 
 unsigned char read_60K_buf[SIZE_60K] = {0};// 读压力数据buf
 unsigned char press_buf[SIZE_64K] = {0};//采集到的压力数据
-float feature_ret_value[FEATURE_NUM] = {0.0}; //15个特征值
 
 volatile bool thread_finished_flag = 0; //表示当前线程完成标识
-volatile bool post_flag = true;  // 发送post 信号量标识
 volatile bool exit_thread_flag = false; //退出线程标志
 volatile int  stop_smp_flag = 0;//停止采集数据 标识
 volatile int  restart_power_on_flag = 0;  // spi 重新上电标识
@@ -78,17 +73,18 @@ volatile int  can_start_flag  = 0; //用于快速点击时，dma没有执行完
 volatile int  start_enable_flag = 0;// 响应start接口标识
 volatile int  press_discard_16K_flag =0; //压力采集丢弃前16K数据，解决波形前面不稳bug
 volatile int  press_flag0_flag = 0 ;  //用于压力标0 丢弃前10波数据
-
 volatile float pflag0_value = 0.0; //压力标0 模式值
+volatile int  start_num = 0; // 用于判定stop 完成后，才可以响应start
+int  test_mode = 0 ; //初始化内部测试模式,会传给寄存器配置
 
-volatile int start_num = 0; // 用于判定stop 完成后，才可以响应start
-int old_fd = 0;  //前一次fd
+
+//int old_fd = 0;  //前一次fd
 pthread_t  c_id; // 开辟线程 c_id:计算
 sem_t   run_sem; //内部信号名  run_sem: 继续运行信号
 
-#define   MAX_SIZE  31457280
-unsigned char g_max_char_buf[ MAX_SIZE ] ={0}; //6.34M  6568576    ,26274304    31457280
-int g_smpLength = 0; //实际采集的波形长度
+#define   MAX_SIZE  3284288 //单通道最大（128*1024 + 690000）*4 = 3284288  ,双通道最大（128*1024 + 690000）*2*4 = 6568576    //31457280
+unsigned char g_max_char_buf[ MAX_SIZE ] ={0}; 
+volatile int g_smpLength = 0; //实际采集的波形长度
 int g_chNum = 0;     //振动通道个数
  
 
@@ -450,7 +446,8 @@ static int stop_vibrate_sample( struct spictl_device_t* dev )//停止振动采�
 ///////////////////压力采集功能如下
 void read_press_data( int signo ) // 读取压力adc 采样数据
 {	
-    //LOGD( "xin: 读取压力数据时stop_smp_flag = %d,g_loop_num = %d, g_smpLength = %d , power_off_flag =%d  , [%s]\n" ,  stop_smp_flag, g_loop_num, g_smpLength , power_off_flag , log_time( ) );
+    int p_loop_num =0;
+    //LOGD( "xin: 读取压力数据时stop_smp_flag = %d,p_loop_num = %d, g_smpLength = %d , power_off_flag =%d  , [%s]\n" ,  stop_smp_flag, p_loop_num, g_smpLength , power_off_flag , log_time( ) );
     if(power_off_flag == 1) 
 	{	
 		LOGD("xin: 读取压力数据时，检测到下电标识，不再读取数据提前stop fpaga DMA,post信号量");
@@ -470,14 +467,14 @@ void read_press_data( int signo ) // 读取压力adc 采样数据
         LOGD( "Error: spi slave device read fail !\n " );
     }
 	
-	if( g_loop_num == 0 )
+	if( p_loop_num == 0 )
     {
         memcpy( &press_buf ,  &read_60K_buf ,  SIZE_60K );	
-		g_loop_num ++;	
-    }else if( g_loop_num == 1 )
+		p_loop_num ++;	
+    }else if( p_loop_num == 1 )
     {
 		press_discard_16K_flag ++;
-		g_loop_num = 0;
+		p_loop_num = 0;
         
 		if(press_flag0_flag) //压力标0，丢前6波数据
 		{
@@ -490,9 +487,8 @@ void read_press_data( int signo ) // 读取压力adc 采样数据
                 psample_buf =( int* )&( press_buf ) ;
                 //LOGD( "xin: post压力信号量 : [%s]\n" ,  log_time( ) ); 
                         
-                sem_post( &run_sem );			
-                
-                g_loop_num = 0;
+                sem_post( &run_sem );                
+                p_loop_num = 0;
                 press_discard_16K_flag =0;
 		   }
 		}else //其它正常采集，只丢前3波数据
@@ -505,9 +501,8 @@ void read_press_data( int signo ) // 读取压力adc 采样数据
 				memcpy( &press_buf[SIZE_60K] ,  &read_60K_buf ,  SIZE_4K ); //SIZE_4K= 4096
 				psample_buf =( int* )&( press_buf ) ;
 				//LOGD( "xin: post压力信号量 : [%s]\n" ,  log_time( ) ); 
-				sem_post( &run_sem );			
-				
-				g_loop_num = 0;
+				sem_post( &run_sem );				
+				p_loop_num = 0;
 				press_discard_16K_flag =0;
 			}
 		}
@@ -765,7 +760,6 @@ static int start_pressure_flag0( struct spictl_device_t* dev )// 压力标0模�
    }   
     memset(read_60K_buf,0,SIZE_60K*sizeof(unsigned char));
     memset(press_buf ,0, SIZE_64K*sizeof(unsigned char)); 
-    g_loop_num = 0;
 	press_flag0_flag = 1;  //只针对标0时，此时置为1
         
     poweron_spi(  );			
@@ -800,7 +794,6 @@ static int start_pressure_curve( struct spictl_device_t* dev , float flag0_value
    } 
     memset(read_60K_buf,0,SIZE_60K*sizeof(unsigned char)); 
     memset(press_buf ,0, SIZE_64K*sizeof(unsigned char)); 	
-    g_loop_num = 0;
 	stop_smp_flag = 0;
     pflag0_value = flag0_value;	
 
@@ -866,7 +859,6 @@ static int start_pressure_dial( struct spictl_device_t* dev , float flag0_value 
    } 
     memset(read_60K_buf,0,SIZE_60K*sizeof(unsigned char));   
     memset(press_buf ,0, SIZE_64K*sizeof(unsigned char)); 	
-    g_loop_num = 0;
 	stop_smp_flag = 0;
     pflag0_value = flag0_value;
 	
@@ -927,11 +919,10 @@ static int start_pressure_dial( struct spictl_device_t* dev , float flag0_value 
 
 
 
-
 ////////////振动采集功能如下
 void read_evalute_data( int signo) //读取振动评估数据    通道2, 下限10HZ, 上限1000 ,长度4096
 {	 
-     LOGD( "xin: 读取振动评估数据时stop_smp_flag = %d,g_loop_num = %d, g_smpLength = %d , power_off_flag =%d  , [%s]\n" ,  stop_smp_flag, g_loop_num, g_smpLength , power_off_flag , log_time( ) );
+     LOGD( "xin: 读取振动评估数据时stop_smp_flag = %d, g_smpLength = %d , power_off_flag =%d  , [%s]\n" ,  stop_smp_flag,  g_smpLength , power_off_flag , log_time( ) );
 	if( stop_smp_flag )
 	{		 
 		return;
@@ -955,7 +946,8 @@ void read_evalute_data( int signo) //读取振动评估数据    通道2, 下限
 
 void read_vibrate_data( int signo) //读取振动采集数据
 {	 
-    //LOGD( "xin: 读取振动数据时stop_smp_flag = %d,g_loop_num = %d, g_smpLength = %d , power_off_flag =%d  , [%s]\n" ,  stop_smp_flag, g_loop_num, g_smpLength , power_off_flag , log_time( ) );
+    int v_loop_num = 0;
+    //LOGD( "xin: 读取振动数据时stop_smp_flag = %d,v_loop_num = %d, g_smpLength = %d , power_off_flag =%d  , [%s]\n" ,  stop_smp_flag, v_loop_num, g_smpLength , power_off_flag , log_time( ) );
 	if(power_off_flag == 1) 
 	{	
 		LOGD("xin: 读取振动数据时，检测到下电标识，不再读取数据提前stop fpga DMA,post信号量");
@@ -997,21 +989,22 @@ void read_vibrate_data( int signo) //读取振动采集数据
 			 LOGD( "Error: spi slave device read fail !\n " ); 
 		  }
 		 
-		  if( g_loop_num < shang )
+		  if( v_loop_num < shang )
 		  {			 				 
-			 memcpy( &g_max_char_buf[SIZE_60K*g_loop_num] ,  &read_60K_buf ,  SIZE_60K );	
-			 g_loop_num++;
+			 memcpy( &g_max_char_buf[SIZE_60K*v_loop_num] ,  &read_60K_buf ,  SIZE_60K );	
+			 v_loop_num++;
 		  }
-          else if( g_loop_num == shang )
+          else if( v_loop_num == shang )
 		  {		
 	         stop_smp_flag = 1; //flag置1,停止继续读数据
 	         stop_fpga_dma(); 
 			 
-			 memcpy( &g_max_char_buf[SIZE_60K*g_loop_num] ,  &read_60K_buf ,  yu*sizeof( float ) );
+			 memcpy( &g_max_char_buf[SIZE_60K*v_loop_num] ,  &read_60K_buf ,  yu*sizeof( float ) );
 			 
 			 g_smp_buf =( int* )&( g_max_char_buf ) ; 				 
 			 
 			 sem_post( &run_sem ); 
+             v_loop_num = 0;
 			 LOGD( "xin: post振动信号量111 : [%s]\n" ,  log_time( ) );              	 
 		  }		
 	}	
@@ -1022,12 +1015,12 @@ void read_vibrate_data( int signo) //读取振动采集数据
 			LOGD( "Error: spi slave device read fail !\n " );
 		 }			
 		 
-		 if( g_loop_num < shang )
+		 if( v_loop_num < shang )
 		 {			
-			 memcpy( &g_max_char_buf[SIZE_60K*g_loop_num] ,  &read_60K_buf ,  SIZE_60K );	
-			 g_loop_num++;
+			 memcpy( &g_max_char_buf[SIZE_60K*v_loop_num] ,  &read_60K_buf ,  SIZE_60K );	
+			 v_loop_num++;
 		 }
-		 else if( g_loop_num == shang )
+		 else if( v_loop_num == shang )
 		 {		
 	         stop_smp_flag = 1;
              stop_fpga_dma();	 
@@ -1035,14 +1028,16 @@ void read_vibrate_data( int signo) //读取振动采集数据
 			 g_smp_buf =( int* )&( g_max_char_buf ) ;	
 			 
 			 sem_post( &run_sem ); 
+             v_loop_num = 0;
 			 LOGD( "xin: post振动信号量222 : [%s]\n" ,  log_time( ) );              			 
 		 }		
 	}		
 }
 
 void read_calibration_data( int signo) //读取振动校准数据
-{	    
-   // LOGD( "xin: 读取振动校准数据stop_smp_flag = %d,g_loop_num = %d, g_smpLength = %d , power_off_flag =%d  , [%s]\n" ,  stop_smp_flag, g_loop_num, g_smpLength , power_off_flag , log_time( ) ); 
+{	
+    int c_loop_num = 0;
+   // LOGD( "xin: 读取振动校准数据stop_smp_flag = %d,c_loop_num = %d, g_smpLength = %d , power_off_flag =%d  , [%s]\n" ,  stop_smp_flag, c_loop_num, g_smpLength , power_off_flag , log_time( ) ); 
 	if(power_off_flag == 1) 
 	{	
 		LOGD("xin: 读取振动数据时，检测到下电标识，不再读取数据提前stop fpga DMA,post信号量");
@@ -1084,26 +1079,26 @@ void read_calibration_data( int signo) //读取振动校准数据
 			 LOGD( "Error: spi slave device read fail !\n " ); 
 		  }
 		 
-		  if( g_loop_num < shang )
+		  if( c_loop_num < shang )
 		  {			 				 
-			 memcpy( &g_max_char_buf[SIZE_60K*g_loop_num] ,  &read_60K_buf ,  SIZE_60K );	
-			 g_loop_num++;
+			 memcpy( &g_max_char_buf[SIZE_60K*c_loop_num] ,  &read_60K_buf ,  SIZE_60K );	
+			 c_loop_num++;
 		  }
-          else if( g_loop_num == shang )
+          else if( c_loop_num == shang )
 		  {	
              press_discard_16K_flag ++;
-             g_loop_num = 0;
+             c_loop_num = 0;
              if(press_discard_16K_flag > 1)//丢一波数据
              {
                  stop_smp_flag = 1; //flag置1,停止继续读数据
                  stop_fpga_dma(); 
                  
-                 memcpy( &g_max_char_buf[SIZE_60K*g_loop_num] ,  &read_60K_buf ,  yu*sizeof( float ) );
+                 memcpy( &g_max_char_buf[SIZE_60K*c_loop_num] ,  &read_60K_buf ,  yu*sizeof( float ) );
                  
                  g_smp_buf =( int* )&( g_max_char_buf ) ; 				 
                  
                  sem_post( &run_sem ); 
-                 g_loop_num = 0;
+                 c_loop_num = 0;
                  press_discard_16K_flag = 0;
                  LOGD( "xin: post振动信号量111 : [%s]\n" ,  log_time( ) );
              }
@@ -1808,6 +1803,8 @@ void *vibrate_calib_thread( void* arg ) //振动校准线程
 	return NULL;
 }
 
+
+
 static int start_vibrate_CH_timewave( struct spictl_device_t* dev ,  int ch_num , struct time_wave_para tWave  )//时域波形
 {	
    LOGD("xin: 响应时域点击开始start_num = %d",start_num);
@@ -1827,7 +1824,6 @@ static int start_vibrate_CH_timewave( struct spictl_device_t* dev ,  int ch_num 
     
 	g_chNum = ch_num;	 
 	stop_smp_flag = 0;	
-	g_loop_num = 0;
 	g_smpLength = 0;
     test_mode = tWave.version_mode;   
     
@@ -1916,7 +1912,6 @@ static int start_vibrate_CH_totalrend( struct spictl_device_t* dev ,  int ch_num
 	
     g_chNum = ch_num;	
 	stop_smp_flag = 0;	
-	g_loop_num = 0;
 	g_smpLength = 0;	
     test_mode = tRend.version_mode;
     
@@ -2001,7 +1996,6 @@ static int start_vibrate_evalute_level( struct spictl_device_t* dev , struct tim
     memset(g_max_char_buf ,0, MAX_SIZE*sizeof(unsigned char));
 	
 	stop_smp_flag = 0;	
-	g_loop_num = 0;
 	g_smpLength = 0;	
 	test_mode = tWave.version_mode;
 	
@@ -2049,7 +2043,6 @@ static int start_vibrate_calibration( struct spictl_device_t* dev ,struct time_w
 	LOGD("xin: 响应振动校准开始start_num = %d",start_num);
     
     stop_smp_flag = 0;	
-	g_loop_num = 0;
 	g_smpLength = 0;	
 	test_mode = tWave.version_mode;
     
@@ -2163,7 +2156,6 @@ void *freq_wave_thread( void* arg ) //频域线程
 			          		
 			if( exit_thread_flag )
 			{
-				post_flag = false;
 				#if 1
 				if( freq_CH1_smp_buf != NULL)
 				{
@@ -2286,7 +2278,6 @@ void *freq_wave_thread( void* arg ) //频域线程
 						
 			if( exit_thread_flag )
 			{
-				post_flag = false;
 				#if 1
 				if( freq_CH1_smp_buf !=NULL )
 				{
@@ -2366,9 +2357,7 @@ static int start_vibrate_CH_freqwave( struct spictl_device_t* dev , int ch_num ,
 	sem_init( &run_sem ,  0 ,  0 );
    	
     exit_thread_flag = false;	
-	post_flag = true;
 	stop_smp_flag = 0;	
-	g_loop_num =0;
 	
 	f_discard_pnts = Get_InvalidNum((int)fWave.max_freq , (int)fWave.min_freq ); 
     f_max_freq = (int)fWave.max_freq;
@@ -2418,7 +2407,6 @@ static int start_rotation_CH( struct spictl_device_t* dev )//启动转速通道�
 	
 	exit_thread_flag = false;      
 	stop_smp_flag = 0;	
-	g_loop_num =0;
 	
 	pthread_create( &c_id ,  NULL ,  rotation_CH_thread ,  NULL );
 	signal( SIGIO ,  read_vibrate_data );
