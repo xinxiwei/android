@@ -926,9 +926,12 @@ static int start_pressure_dial( struct spictl_device_t* dev , float flag0_value 
 }
 
 
+
+
 ////////////振动采集功能如下
 void read_evalute_data( int signo) //读取振动评估数据    通道2, 下限10HZ, 上限1000 ,长度4096
-{	    
+{	 
+     LOGD( "xin: 读取振动评估数据时stop_smp_flag = %d,g_loop_num = %d, g_smpLength = %d , power_off_flag =%d  , [%s]\n" ,  stop_smp_flag, g_loop_num, g_smpLength , power_off_flag , log_time( ) );
 	if( stop_smp_flag )
 	{		 
 		return;
@@ -1108,6 +1111,7 @@ void read_calibration_data( int signo) //读取振动校准数据
 	}
 }
 
+int t_discard_pnts = 0,t_max_freq = 0,t_min_freq = 0,t_wave_length = 0;
 void *time_wave_thread( void* arg ) //时域线程
 {	    
 	timewave my_timewave;
@@ -1115,10 +1119,8 @@ void *time_wave_thread( void* arg ) //时域线程
 	int i=0 ;
     int t_temp_len =0;		
 	float t_CH_data[3]={0.0};	 //各振动通道数据
-	int t_discard_pnts =  Get_InvalidNum((int)my_timewave.max_freq , (int)my_timewave.min_freq );  //根据上下限，获取IIR需要丢弃的点数
-    int t_max_freq = (int)my_timewave.max_freq;
-    int t_min_freq = (int)my_timewave.min_freq;
-    int t_wave_length = my_timewave.wave_length;
+	
+    
 	LOGD("时域运算线程maxfreq = %d, minfreq = %d, wavelength = %d, t_discard_pnts = %d",(int)my_timewave.max_freq,(int)my_timewave.min_freq,my_timewave.wave_length,t_discard_pnts);
     
 	if( g_chNum == SINGLE_CH )
@@ -1179,14 +1181,14 @@ void *time_wave_thread( void* arg ) //时域线程
 			enter_IIR_Filter( time_CH1_smp_buf , t_temp_len ,t_max_freq ,t_min_freq ); //IIR 高通滤波
 		}else if( t_max_freq == 1000 || t_max_freq == 5000)	 //上限是1000 5000是1/2抽样 
 		{				
-			enter_FIR_Filter( time_CH1_smp_buf  , g_smpLength, t_max_freq); //FIR 低通滤波
+			enter_FIR_Filter( time_CH1_smp_buf  , g_smpLength, t_max_freq); 
 			t_temp_len = g_smpLength/2 -31; //计算后长度变为1/2	
 						
-			enter_IIR_Filter( time_CH1_smp_buf ,t_temp_len ,t_max_freq ,t_min_freq ); //IIR 高通滤波
+			enter_IIR_Filter( time_CH1_smp_buf ,t_temp_len ,t_max_freq ,t_min_freq ); 
 							
 		}else  //其它上限频率只经过IIR
 		{	
-			enter_IIR_Filter( time_CH1_smp_buf , t_temp_len ,t_max_freq ,t_min_freq ); //IIR 高通滤波
+			enter_IIR_Filter( time_CH1_smp_buf , t_temp_len ,t_max_freq ,t_min_freq ); 
 		}
 	
 		//LOGD("SINGLE_CH_temp_len = %d , t_discard_pnts = %d, wave_length = %d, wave_length+discard_pnts = %d" ,t_temp_len,t_discard_pnts,t_wave_length,t_wave_length + t_discard_pnts  );			
@@ -1376,6 +1378,7 @@ void *time_wave_thread( void* arg ) //时域线程
 	return NULL;
 }
 
+int r_discard_pnts = 0,r_max_freq = 0,r_min_freq = 0,r_wave_length = 0;
 void *total_rend_thread( void* arg ) //总值趋势线程
 {
     totalrend my_totalrend;
@@ -1385,10 +1388,6 @@ void *total_rend_thread( void* arg ) //总值趋势线程
 	float r_CH1_value[1] ={0.0};
 	float r_CH2_value[1] ={0.0};	
 	float r_CH_data[3]={0.0};
-	int r_discard_pnts =  Get_InvalidNum((int)my_totalrend.max_freq , (int)my_totalrend.min_freq );
-    int r_max_freq = (int)my_totalrend.max_freq;
-    int r_min_freq = (int)my_totalrend.min_freq;
-    int r_wave_length = my_totalrend.wave_length;
     
 	if( g_chNum == SINGLE_CH  )
 	{		        
@@ -1652,6 +1651,8 @@ void *total_rend_thread( void* arg ) //总值趋势线程
 	return NULL;
 }
 
+
+int e_discard_pnts = 0 ,e_max_freq = 0,e_min_freq = 0,e_wave_length = 0;
 void *evalute_level_thread( void* arg ) //振动等级评估线程
 {    
     timewave my_timewave;
@@ -1659,17 +1660,13 @@ void *evalute_level_thread( void* arg ) //振动等级评估线程
     int i=0;
     int e_temp_len =0;	
 	float evalute_value[1] ={0.0};	 //0位:表示速度
-	float e_CH_data[3]={0.0};		
-	int e_discard_pnts = Get_InvalidNum((int)my_timewave.max_freq , (int)my_timewave.min_freq ); 
-    int e_max_freq = (int)my_timewave.max_freq;
-    int e_min_freq = (int)my_timewave.min_freq;
-    int e_wave_length = my_timewave.wave_length;
+	float e_CH_data[3]={0.0};	
     
 	if( e_max_freq == 1000 )
 	{
 		g_smpLength = ( e_wave_length + e_discard_pnts +31 )*2;	//针对 这1000频率，需要1/2 抽点，所以采集升度 *2
 	}	
-	//LOGD( "xin: 振动等级评估线程e_discard_pnts = %d ,  e_wave_length = %d ,  g_smpLength = %d"  , e_discard_pnts ,  e_wave_length ,  g_smpLength );
+	LOGD( "xin: 振动等级评估线程e_discard_pnts = %d ,  e_wave_length = %d ,  g_smpLength = %d"  , e_discard_pnts ,  e_wave_length ,  g_smpLength );
 			
     //分配需要的内存
     float *evalute_CH1_smp_buf =NULL; //振动评估 通道1 采集数据
@@ -1694,7 +1691,7 @@ void *evalute_level_thread( void* arg ) //振动等级评估线程
 		evalute_CH1_smp_buf[i] = e_CH_data[2]; //单通道振动采集默认CHB 数据				
 	}	
 	dis_dc_func(evalute_CH1_smp_buf,g_smpLength);		
-	//LOGD( "xin: SINGLE_CH_结束转换数据 is : [%s]\n" ,  log_time( ) );	
+	LOGD( "xin: SINGLE_CH_结束转换数据 is : [%s]\n" ,  log_time( ) );	
 	
 	e_temp_len = g_smpLength; ////FIR 低通滤波，单通道，采样长度	
 	if( e_max_freq == 1000 )	 //上限是1000 是1/2抽样 
@@ -1705,7 +1702,7 @@ void *evalute_level_thread( void* arg ) //振动等级评估线程
 		enter_IIR_Filter( evalute_CH1_smp_buf ,e_temp_len , e_max_freq , e_min_freq ); //IIR 高通滤波
 	}		
 	memcpy( evalute_CH1_smp_buf ,  &evalute_CH1_smp_buf[e_discard_pnts] ,  e_wave_length*sizeof( float ) );	
-	//LOGD( "xin: SINGLE_CH_退出算法 is : [%s]\n" ,  log_time( ) );		
+	LOGD( "xin: SINGLE_CH_退出算法 is : [%s]\n" ,  log_time( ) );		
 	
 	evalute_value[0] = rend_value( evalute_CH1_smp_buf ,  e_wave_length ,  0 );	//速度有效值 0表示有效值
 	LOGD( "xin: 计算出速度有效值 = %f" ,  evalute_value[0] );	
@@ -1739,6 +1736,7 @@ void *evalute_level_thread( void* arg ) //振动等级评估线程
 	return NULL;
 }
 
+int v_discard_pnts = 0, v_max_freq = 0, v_min_freq = 0,v_wave_length = 0;
 void *vibrate_calib_thread( void* arg ) //振动校准线程
 {    
     timewave my_timewave;
@@ -1746,11 +1744,10 @@ void *vibrate_calib_thread( void* arg ) //振动校准线程
     int i=0;
     int v_temp_len =0;	
     float calib_value[2] ={0.0};	 //0位:表示峰峰值，1位：表示平均值
-	float v_CH_data[3]={0.0};		
-    int v_discard_pnts = Get_InvalidNum((int)my_timewave.max_freq , (int)my_timewave.min_freq ); 
-    int v_max_freq = (int)my_timewave.max_freq;
-    int v_min_freq = (int)my_timewave.min_freq;
-    int v_wave_length = my_timewave.wave_length;  
+	float v_CH_data[3]={0.0};	
+
+      
+    
     g_smpLength = ( v_wave_length + v_discard_pnts );	//实际采集的波形长度
 	LOGD( "xin: 振动校准线程v_discard_pnts = %d ,  v_wave_length = %d ,  g_smpLength = %d"  , v_discard_pnts ,  v_wave_length ,  g_smpLength );
 			
@@ -1833,6 +1830,11 @@ static int start_vibrate_CH_timewave( struct spictl_device_t* dev ,  int ch_num 
 	g_loop_num = 0;
 	g_smpLength = 0;
     test_mode = tWave.version_mode;   
+    
+    t_discard_pnts =  Get_InvalidNum((int)tWave.max_freq , (int)tWave.min_freq );  
+    t_max_freq = (int)tWave.max_freq;
+    t_min_freq = (int)tWave.min_freq;
+    t_wave_length = tWave.wave_length;
     
     LOGD("xin: 点击时域开始时 power_off_flag = %d,start_enable_flag = %d, restart_power_on_flag= %d, can_start_flag = %d , thread_finished_flag = %d",power_off_flag,start_enable_flag,restart_power_on_flag,can_start_flag,thread_finished_flag);
 	LOGD( "xin: start_vibrate_CH_timewave_ch_num = %d , data_type = %d , signal_type = %d ,  min_freq = %d , max_freq = %d , wave_length = %d, test_mode =%d", ch_num ,  tWave.data_type ,  tWave.signal_type ,  (int)tWave.min_freq ,  (int)tWave.max_freq  , tWave.wave_length, test_mode );
@@ -1918,6 +1920,10 @@ static int start_vibrate_CH_totalrend( struct spictl_device_t* dev ,  int ch_num
 	g_smpLength = 0;	
     test_mode = tRend.version_mode;
     
+    r_discard_pnts =  Get_InvalidNum((int)tRend.max_freq , (int)tRend.min_freq );
+    r_max_freq = (int)tRend.max_freq;
+    r_min_freq = (int)tRend.min_freq;
+    r_wave_length = tRend.wave_length;
     
 	LOGD("xin: 点击总值开始时 start_enable_flag = %d, restart_power_on_flag= %d, can_start_flag = %d , thread_finished_flag = %d", start_enable_flag,restart_power_on_flag,can_start_flag,thread_finished_flag);
 	LOGD( "xin: start_vibrate_CH_totalrend_ch_num = %d , data_type = %d , signal_type = %d ,  min_freq = %d , max_freq = %d , wave_length = %d ,interval_time = %f ,test_mode = %d", ch_num ,  tRend.data_type ,  tRend.signal_type ,  (int)tRend.min_freq ,  (int)tRend.max_freq  , tRend.wave_length, tRend.interval_time,test_mode);	
@@ -1983,7 +1989,7 @@ static int start_vibrate_CH_totalrend( struct spictl_device_t* dev ,  int ch_num
 	return 0;
 }
 
-/* 下限10hz  上限1000Hz  波长4k */
+/* 振动等级评估 下限10hz  上限1000Hz  波长4k */
 static int start_vibrate_evalute_level( struct spictl_device_t* dev , struct time_wave_para tWave )//振动等级评估
 {	
     LOGD("xin: 响应振动等级评估开始start_num = %d",start_num);
@@ -1999,6 +2005,11 @@ static int start_vibrate_evalute_level( struct spictl_device_t* dev , struct tim
 	g_smpLength = 0;	
 	test_mode = tWave.version_mode;
 	
+    e_discard_pnts = Get_InvalidNum((int)tWave.max_freq , (int)tWave.min_freq ); 
+    e_max_freq = (int)tWave.max_freq;
+    e_min_freq = (int)tWave.min_freq;
+    e_wave_length = tWave.wave_length;
+    
 	LOGD( "\nxin: 响应振动等级评估开始signal_type = %d ,  min_freq = %d , max_freq = %d , wave_length = %d ,test_mode = %d",	 tWave.signal_type ,  (int)tWave.min_freq ,  (int)tWave.max_freq  , tWave.wave_length, test_mode);	
 	 
 	if( !is_right_length(tWave.wave_length))
@@ -2032,7 +2043,6 @@ static int start_vibrate_evalute_level( struct spictl_device_t* dev , struct tim
 	return 0;
 }
 
-
 /* 振动校准,上限40KHZ, 下限分DC耦合5HZ, AC耦合10HZ, 加速度，速度，位移都要校准*/
 static int start_vibrate_calibration( struct spictl_device_t* dev ,struct time_wave_para tWave)//振动校准
 {	
@@ -2042,6 +2052,11 @@ static int start_vibrate_calibration( struct spictl_device_t* dev ,struct time_w
 	g_loop_num = 0;
 	g_smpLength = 0;	
 	test_mode = tWave.version_mode;
+    
+    v_discard_pnts = Get_InvalidNum((int)tWave.max_freq , (int)tWave.min_freq ); 
+    v_max_freq = (int)tWave.max_freq;
+    v_min_freq = (int)tWave.min_freq;
+    v_wave_length = tWave.wave_length;
     
 	LOGD("\nxin: 响应振动校准开始signal_type= %d ,min_freq = %d ,max_freq = %d ,wave_length = %d ",tWave.signal_type,(int)tWave.min_freq,(int)tWave.max_freq,tWave.wave_length);	
 
@@ -2062,7 +2077,9 @@ static int start_vibrate_calibration( struct spictl_device_t* dev ,struct time_w
 }
 
 
-static float* spi_get_feature_value( struct spictl_device_t* dev , float pData[] , int data_len )//获取15个特征值
+
+/* 获取15个特征值 */
+static float* spi_get_feature_value( struct spictl_device_t* dev , float pData[] , int data_len )
 {	
 	memset( feature_ret_value , 0 , FEATURE_NUM*sizeof( float ) ); //每次进来先初始化0
 	feature_value( pData ,  data_len ,  feature_ret_value ); // 求15个特征值
@@ -2078,7 +2095,8 @@ static float* spi_get_feature_value( struct spictl_device_t* dev , float pData[]
 	return feature_ret_value;	
 }
 
-static float* spi_time_to_freq_value( struct spictl_device_t* dev , float pData[] , int data_len  )//时域到频域接口
+/* 时域到频域接口 */
+static float* spi_time_to_freq_value( struct spictl_device_t* dev , float pData[] , int data_len  )
 {
 	fft_alg_entry2( pData ,  data_len , 0 , 0 , 0 );	//0默认不加窗，不平均，平均方式不进行
 	
@@ -2095,16 +2113,14 @@ static float* spi_time_to_freq_value( struct spictl_device_t* dev , float pData[
 
 
 /////////频率采集功能如下 
+int f_discard_pnts = 0,f_max_freq = 0,f_min_freq = 0,f_wave_length = 0;
 void *freq_wave_thread( void* arg ) //频域线程
 {	
     freqwave my_freqwave ;
 	my_freqwave = *( struct freq_wave_para* )arg;		
 	int i=0 , j=0 , k=0;	
 	float f_CH_data[3]={0.0};
-	int f_discard_pnts = Get_InvalidNum((int)my_freqwave.max_freq , (int)my_freqwave.min_freq ); 
-    int f_max_freq = (int)my_freqwave.max_freq;
-    int f_min_freq = (int)my_freqwave.min_freq;
-    int f_wave_length = my_freqwave.spectra_num*2.56;//波形长度 = 频谱线数*2.56	
+	
     
 	if( g_chNum == SINGLE_CH ) 
 	{
@@ -2183,8 +2199,8 @@ void *freq_wave_thread( void* arg ) //频域线程
 		
 	if( g_chNum == DOUBLE_CH ) //双通道内存为单通道时的两倍
 	{	       
-	    f_wave_length =( my_freqwave.spectra_num*2.56 )*2; //波形长度 = 频谱线数*2.56
-		g_smpLength =( my_freqwave.spectra_num*2.56 + f_discard_pnts )*2;	//实际采集的波形长度        
+	    f_wave_length = f_wave_length*2; //波形长度 = 频谱线数*2.56
+		g_smpLength = f_wave_length + f_discard_pnts *2;	//实际采集的波形长度        
 		LOGD( "xin:freq_wave_thread_DOUBLE_CH_f_discard_pnts = %d ,  spectra_num*2.56 = %d ,  g_smpLength = %d"  , f_discard_pnts ,  f_wave_length/2 ,  g_smpLength );
 		if( f_wave_length < 0 )
 		{
@@ -2353,7 +2369,12 @@ static int start_vibrate_CH_freqwave( struct spictl_device_t* dev , int ch_num ,
 	post_flag = true;
 	stop_smp_flag = 0;	
 	g_loop_num =0;
-		
+	
+	f_discard_pnts = Get_InvalidNum((int)fWave.max_freq , (int)fWave.min_freq ); 
+    f_max_freq = (int)fWave.max_freq;
+    f_min_freq = (int)fWave.min_freq;
+    f_wave_length = fWave.spectra_num*2.56;//波形长度 = 频谱线数*2.56	
+        
 	pthread_create( &c_id ,  NULL ,  freq_wave_thread , ( void* )&fWave ); 
     LOGD( "start_vibrate_CH_freqwave time: [%s]\n" ,  log_time( ) ); 	
 	signal( SIGIO ,  read_vibrate_data ); 
