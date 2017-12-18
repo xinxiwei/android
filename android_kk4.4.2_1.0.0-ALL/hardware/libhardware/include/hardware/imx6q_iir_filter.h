@@ -2,11 +2,11 @@
 *  (c) Copyright 2017 ENNOVAR, All rights reserved
 *
 *    create_by:           gxl
-*  								 
+*
 *    filename:            Alg_IIRFilter.h
 *
-*    description:            
-*              
+*    description:
+*
 *    revision_history:
 *        Date                 By         Description
 *        2017/08/03           gxl         created
@@ -21,12 +21,12 @@
 ***************************************************************************************/
 
 /********************************upper limiting frequency******************************/
-#define UPPER_FRE_500      (500)   
+#define UPPER_FRE_500      (500)
 #define UPPER_FRE_1000     (1000)
 #define UPPER_FRE_2000     (2000)
 #define UPPER_FRE_2500     (2500)
 #define UPPER_FRE_4000     (4000)
-#define UPPER_FRE_5000     (5000)  
+#define UPPER_FRE_5000     (5000)
 #define UPPER_FRE_10000    (10000)
 #define UPPER_FRE_20000    (20000)
 #define UPPER_FRE_40000    (40000)
@@ -53,7 +53,7 @@
 #define IIR_F100            (7)
 
 /************************************sample frequency**********************************/
-#define SAMPLE_FRE_1280    (1280) 
+#define SAMPLE_FRE_1280    (1280)
 #define SAMPLE_FRE_2560    (2560)
 #define SAMPLE_FRE_5120    (5120)
 #define SAMPLE_FRE_6400    (6400)
@@ -86,8 +86,8 @@ typedef enum _tagSAMPLEFRE
 	F_102400_10,
 	F_102400_20,
 	F_102400_50,
-	F_102400_100,	
-	
+	F_102400_100,
+
 	F_51200_0_16 ,
     F_51200_1,
 	F_51200_2,
@@ -95,8 +95,8 @@ typedef enum _tagSAMPLEFRE
 	F_51200_10,
 	F_51200_20,
 	F_51200_50,
-	F_51200_100,	
-	
+	F_51200_100,
+
 	F_25600_0_16 ,
     F_25600_1,
 	F_25600_2,
@@ -104,8 +104,8 @@ typedef enum _tagSAMPLEFRE
 	F_25600_10,
 	F_25600_20,
 	F_25600_50,
-	F_25600_100,	
-	
+	F_25600_100,
+
 	F_12800_0_16 ,
     F_12800_1,
 	F_12800_2,
@@ -113,8 +113,8 @@ typedef enum _tagSAMPLEFRE
 	F_12800_10,
 	F_12800_20,
 	F_12800_50,
-	F_12800_100,	
-	
+	F_12800_100,
+
 	F_10240_0_16 ,
     F_10240_1,
 	F_10240_2,
@@ -122,8 +122,8 @@ typedef enum _tagSAMPLEFRE
 	F_10240_10,
 	F_10240_20,
 	F_10240_50,
-	F_10240_100,	
-	
+	F_10240_100,
+
 	F_6400_0_16 ,
     F_6400_1,
 	F_6400_2,
@@ -131,8 +131,8 @@ typedef enum _tagSAMPLEFRE
 	F_6400_10,
 	F_6400_20,
 	F_6400_50,
-	F_6400_100,	
-	
+	F_6400_100,
+
 	F_5120_0_16 ,
     F_5120_1,
 	F_5120_2,
@@ -140,8 +140,8 @@ typedef enum _tagSAMPLEFRE
 	F_5120_10,
 	F_5120_20,
 	F_5120_50,
-	F_5120_100,	
-	
+	F_5120_100,
+
 	F_2560_0_16 ,
     F_2560_1,
 	F_2560_2,
@@ -150,7 +150,7 @@ typedef enum _tagSAMPLEFRE
 	F_2560_20,
 	F_2560_50,
 	F_2560_100,
-	
+
 	F_1280_0_16 ,
     F_1280_1,
 	F_1280_2,
@@ -158,11 +158,11 @@ typedef enum _tagSAMPLEFRE
 	F_1280_10,
 	F_1280_20,
 	F_1280_50,
-	F_1280_100,	  
+	F_1280_100,
 }tSAMPLEFRE, *tPSAMPLEFRE;
 
 /***************************************************************************************
-* function declaration 
+* function declaration
 ***************************************************************************************/
 static int _GetSampRate(int u16Upper);
 static tPIIRFilter _GetFilterByFC( int SRID,int FCID);
@@ -173,11 +173,10 @@ static void cascade_iir_filter(float*   data,
                                int rev_coeffs_num,      // 反向系数个数
                                int for_coeffs_num,      // 正向系数个数
                                float*   w,                   // IIR滤波器状态系数
-                               float    factor);            
+                               float    factor);
 void  IIRFilterTable_Init(void);
-extern int Get_InvalidNum( int Upper_frq, int Lower_frq );
-extern void enter_IIR_Filter(float *src_data ,int length , int up_freq , int lw_freq);
+extern int get_invalid_num( int Upper_frq, int Lower_frq );
+extern void enter_iir_filter(float *src_data ,int length , int up_freq , int lw_freq);
 extern void integrate_o2(float* data, int len);//, float alpha,float gamma,float beta, float factor,float x1_state,float x2_state,float y1_state,float y2_state);
 extern void integrate_o1(float* data, int len);
 #endif
-

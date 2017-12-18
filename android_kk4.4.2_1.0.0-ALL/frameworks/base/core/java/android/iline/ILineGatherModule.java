@@ -99,7 +99,6 @@ public class ILineGatherModule {
     	return getNativeADFrequency();
     }
     private void requestData(float data[],boolean isCollectData){
-    	//Log.i("cpz","mCallBack"+mCallBack +"data"+data[0]);
     	if(mMode == MODE_SINGLE  ){
     		mCallBack.notifySingleData(data[0],isCollectData);
     	}else if(mMode == MODE_GROUP){

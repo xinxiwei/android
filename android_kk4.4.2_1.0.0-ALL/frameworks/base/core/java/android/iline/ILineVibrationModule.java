@@ -29,6 +29,7 @@ public class ILineVibrationModule {
 	public static final int VIBRATION_SINGLE_TYPE = 1;
 	public static final int VIBRATION_DOUBLE_TYPE = 2;
 	public static final int VIBRATION_ROTATION_TYPE = 3;
+	private static String TAG = "ILineVibrationModule";
 
 	public void setFpgaData( SgPropertyBase value ){ //对上APP接口
 		mFpgaValue = value;
@@ -55,16 +56,13 @@ public class ILineVibrationModule {
 		boolean isSucess = startNativeinit(  );
 		if( isSucess ){
 			if( ch_num == VIBRATION_SINGLE_TYPE  || ch_num == VIBRATION_DOUBLE_TYPE ){
-			   if( mFpgaValue instanceof SgPropertyTime ){
-				   startNativeTimeWave( ch_num ,( SgPropertyTime )mFpgaValue );
-			   }else if( mFpgaValue instanceof SgPropertyFreq ){
-				   startNativeFreqWave( ch_num ,( SgPropertyFreq )mFpgaValue );
-			   }else if( mFpgaValue instanceof SgPropertyTotalTrend ){
-				   startNativeValueWave( ch_num ,( SgPropertyTotalTrend )mFpgaValue );
-			   }
-		    }else {
-				   startNativeRotation(  );
-			}
+			    if( mFpgaValue instanceof SgPropertyTime ){
+			    	Log.i(TAG ,"振动采集调用start接口");
+				    startNativeTimeWave( ch_num ,( SgPropertyTime )mFpgaValue );
+			    }else if( mFpgaValue instanceof SgPropertyTotalTrend ){
+				    startNativeValueWave( ch_num ,( SgPropertyTotalTrend )mFpgaValue );
+			    }
+		    }
 		}
 		return isSucess;
 	}
@@ -86,6 +84,7 @@ public class ILineVibrationModule {
 	}
 	
 	public boolean stopAD(  ){
+	   Log.i(TAG ,"振动采集调用stop接口");
 	   return stopNativeAD(  );
 	}
 	
@@ -139,13 +138,13 @@ public class ILineVibrationModule {
 	}
 	
 	 private native void startNativeTimeWave( int ch_num ,  SgPropertyTime value );
-	 private native void startNativeFreqWave( int ch_num ,  SgPropertyFreq value );
 	 private native void startNativeValueWave( int ch_num ,  SgPropertyTotalTrend value );
-	 private native void startNativeRotation(  );
 	 private native void  startNativeEvalute( SgPropertyBase fgpaValue );
+	 
 	 private native float[] getNativeFeatureData( float data[] , int length );
 	 private native float[] getNativeTimeToFreqData( float data[] , int length );
 	 private native boolean startNativeinit(  );
 	 private native boolean stopNativeAD(  );
+	 
 }
 

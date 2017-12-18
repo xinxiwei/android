@@ -53,13 +53,22 @@ rm -rf out/target/product/sabresd_6dq/recovery
 rm -rf out/target/product/sabresd_6dq/root
 rm -rf out/target/product/sabresd_6dq/system/app
 rm -rf out/target/product/sabresd_6dq/system/priv-app
+rm -rf out/target/product/sabresd_6dq/system/lib/hw
+rm -rf out/target/product/sabresd_6dq/system/framework/framework*.jar
+rm -rf out/target/product/sabresd_6dq/system/framework/services.jar
+rm -rf out/target/product/sabresd_6dq/system/build.prop
+
+set +x
+
+mmm frameworks/base
+mmm frameworks/base/services/java
+mmm frameworks/base/core/jni
+mmm hardware/libhardware
 
 ./mk.sh uboot distclean
 
-set +x
-mmm hardware/libhardware
-mmm frameworks/base/core/jni
-mmm frameworks/base
+make -j8 2>&1 | tee build.log
 
-make -j8
+
+
 

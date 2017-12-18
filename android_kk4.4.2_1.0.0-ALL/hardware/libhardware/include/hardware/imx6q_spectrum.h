@@ -2,11 +2,11 @@
 *  (c) Copyright 2017 ENNOVAR, All rights reserved
 *
 *    create_by:           gxl
-*  								 
+*
 *    filename:            Spectrum.h
 *
-*    description:            
-*              
+*    description:
+*
 *    revision_history:
 *        Date                 By         Description
 *        2017/08/02           gxl         created
@@ -34,16 +34,16 @@
 #define SIGLIB_PARAMETER_ERROR  3   // Indicates SigLib function parameter error occurred
 
 typedef    float      SLData_t;       // Declare data types
-typedef    long       SLFixData_t; 
+typedef    long       SLFixData_t;
 
 enum SLWindow_t                     // Window types
 {
-    SIGLIB_HANNING = 1,	
+    SIGLIB_HANNING = 1,
 	SIGLIB_TRIANGLE,
-	SIGLIB_RECTANGLE,	
-    SIGLIB_HAMMING,	
+	SIGLIB_RECTANGLE,
+    SIGLIB_HAMMING,
     SIGLIB_BLACKMAN,
-	SIGLIB_KAISER	
+	SIGLIB_KAISER
 };
 //FFT Average type definition
 enum SLFftAverage_t
@@ -52,7 +52,7 @@ enum SLFftAverage_t
 	SIGLIB_FFTAVG_PEAKHOLD,		//Peakhold of each point
 	SIGLIB_FFTAVG_VECTOR,		//Average each point directly
 	SIGLIB_FFTAVG_RMS			//Process each point with RMS
-	
+
 };
 
 #define SDS_Sin(a)		((SLData_t)sin((double)a))
@@ -70,8 +70,7 @@ enum SLFftAverage_t
 
 
 /***************************************************************************************
-* function declaration 
+* function declaration
 ***************************************************************************************/
 
 #endif
-

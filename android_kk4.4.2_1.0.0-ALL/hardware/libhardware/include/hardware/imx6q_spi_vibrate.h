@@ -38,18 +38,12 @@ extern "C"
 {
 #endif
 
-extern void feature_value(float *pData, int length, float *ret_value); 
+extern void feature_value(float *pData, int length, float *ret_value);
 extern float rend_value(float *pData,  int length, int totalvalue_type);
 extern void fft_alg_entry2(float *p_buf, long length, int window_type, int average_mode, int average_num);
 
 #ifdef __cplusplus
 };
 #endif
-	
+
 #endif
-
-
-
-
-
-

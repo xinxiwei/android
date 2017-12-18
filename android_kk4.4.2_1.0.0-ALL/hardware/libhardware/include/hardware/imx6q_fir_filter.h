@@ -40,5 +40,5 @@
 #define  FIR_5000_1STAGE_SIZE           (61)
 #define  FIR_5000_1STAGE_DECIFACTOR     (2)
 
-extern void  enter_FIR_Filter( float *src_data  , int length  ,  int up_freq);
+extern void  enter_fir_filter( float *src_data  , int length  ,  int up_freq);
 #endif    /* __HH_FIRCOEFFS_H_HH__ */
