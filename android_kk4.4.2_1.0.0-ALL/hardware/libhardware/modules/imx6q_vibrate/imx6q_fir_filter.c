@@ -18,12 +18,9 @@
 #include <semaphore.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <fcntl.h>
-#include <hardware/imx6q_fir_filter.h>
-#include <hardware/IIRCoeffs.h>
-#include <string.h>
 #include <stdint.h>
-#include <stdbool.h>
+#include "imx6q_fir_filter.h"
+
 /* FIR低通滤波器，用上限卡 */
 
 /*分析频率为500Hz时，各阶OnceFIR的滤波器系数
@@ -33,7 +30,7 @@ Decimation Factor = 4
 Fpass = 500 Hz, Pass Ripple < 0.01dB
 Fstop = 640 Hz, Stopband Attenuation > 60dB*/
 //Stage 1 : Decimation_Factor = 2, FIR_Parameters = 13
-static  float fir_500_1stage_coeffs[ FIR_500_1STAGE_SIZE ]={
+static  float fir_500_1stage_coeffs[FIR_500_1STAGE_SIZE]={
         2.148493E-3,
 		1.043179E-2,
 		-1.033500E-2,
@@ -49,7 +46,7 @@ static  float fir_500_1stage_coeffs[ FIR_500_1STAGE_SIZE ]={
 		2.148493E-3
 };
 //Stage 2 : Decimation_Factor = 2, FIR_Parameters = 65
-static  float fir_500_2stage_coeffs[ FIR_500_2STAGE_SIZE ] = {
+static  float fir_500_2stage_coeffs[FIR_500_2STAGE_SIZE] = {
         5.105268E-4,
 		-3.414229E-4,
 		-8.493122E-4,
@@ -118,7 +115,6 @@ static  float fir_500_2stage_coeffs[ FIR_500_2STAGE_SIZE ] = {
 };
 
 
-
 /*分析频率为1000Hz时，各阶OnceFIR的滤波器系数
 Input Sampling Rate = 5120Hz
 Output Sampling Rate = 2560 Hz
@@ -126,7 +122,7 @@ Decimation Factor = 2
 Fpass = 1000 Hz, Pass Ripple < 0.01dB
 Fstop = 1280 Hz, Stopband Attenuation > 60dB*/
 //Stage 1 : Decimation_Factor = 2, FIR_Parameters = 61
-static  float fir_1000_1stage_coeffs[ FIR_1000_1STAGE_SIZE ]={
+static  float fir_1000_1stage_coeffs[FIR_1000_1STAGE_SIZE]={
         -5.500899E-4,
 		4.813905E-4,
 		1.194679E-3,
@@ -198,7 +194,7 @@ Decimation Factor = 4
 Fpass = 2500 Hz, Pass Ripple < 0.01dB
 Fstop = 3200 Hz, Stopband Attenuation > 60dB*/
 //Stage 1 : Decimation_Factor = 2, FIR_Parameters = 13
-static  float fir_2500_1stage_coeffs[ FIR_2500_1STAGE_SIZE ]={
+static  float fir_2500_1stage_coeffs[FIR_2500_1STAGE_SIZE]={
         2.148493E-3,
 		1.043179E-2,
 		-1.033500E-2,
@@ -215,7 +211,7 @@ static  float fir_2500_1stage_coeffs[ FIR_2500_1STAGE_SIZE ]={
 	};
 
 //Stage 2 : Decimation_Factor = 2, FIR_Parameters = 65
-static  float fir_2500_2stage_coeffs[ FIR_2500_2STAGE_SIZE ]={
+static  float fir_2500_2stage_coeffs[FIR_2500_2STAGE_SIZE]={
         5.105268E-4,
 		-3.414229E-4,
 		-8.493122E-4,
@@ -281,7 +277,7 @@ static  float fir_2500_2stage_coeffs[ FIR_2500_2STAGE_SIZE ]={
 		-8.493122E-4,
 		-3.414229E-4,
 		5.105268E-4
-     };
+    };
 
 
 /*分析频率为5000Hz时，各阶OnceFIR的滤波器系数
@@ -291,7 +287,7 @@ Decimation Factor = 2
 Fpass = 5000 Hz, Pass Ripple < 0.01dB
 Fstop = 6400 Hz, Stopband Attenuation > 60dB*/
 //Stage 1 : Decimation_Factor = 2, FIR_Parameters = 61
-static  float fir_5000_1stage_coeffs[ FIR_5000_1STAGE_SIZE ]={
+static  float fir_5000_1stage_coeffs[FIR_5000_1STAGE_SIZE]={
         -5.500899E-4,
 		4.813905E-4,
 		1.194679E-3,
@@ -355,23 +351,12 @@ static  float fir_5000_1stage_coeffs[ FIR_5000_1STAGE_SIZE ]={
 		-5.500899E-4
 	};
 
-
-
 typedef struct
 {
     uint32_t decifactor;          // 抽样点数
     uint32_t coeff_number;        // 滤波器系数点数
-    float*   coeff;         // 滤波器系数
+    float*   coeff;               // 滤波器系数
 } fir_stage_t;
-
-/* typedef  struct
-{
-    uint32_t    length;      // buffer长度
-    uint32_t    wr_idx;      // buffer写索引
-    uint32_t    rd_idx;      // buffer读索引
-    uint32_t    cur_items;   // buffer中的数据个数
-    float*      data;        // buffer的数据缓存区
-} cir_buf_t; */
 
 typedef struct
 {
@@ -379,10 +364,10 @@ typedef struct
     fir_stage_t** stages;
 } fir_filter_item_t;
 
-/* Fir低通滤波器系数表，根据档位划分 */
-static fir_filter_item_t fir_items[ FIR_FILTER_NUMBER ];
+/* Fir低通滤波器系数表，根据上限频率档位划分为9档 */
+static fir_filter_item_t fir_items[FIR_FILTER_NUMBER]; //9
 
-/* 功能描述: 查找滤波器 */
+/* 功能描述: 通过上限查找滤波器 */
 static fir_filter_item_t* get_filter_item_by_up_freq(uint32_t up_freq)
 {
     uint8_t index = 0;
@@ -399,7 +384,7 @@ static fir_filter_item_t* get_filter_item_by_up_freq(uint32_t up_freq)
 		case 40000: index = FIR_F40000; break;
         default: return NULL;
     }
-    return &fir_items[ index ];
+    return &fir_items[index];
 }
 
 /* 功能描述: 初始化FIR滤波器 */
@@ -407,75 +392,81 @@ bool init_fir_filters(void)
 {
     // 初始化500Hz档位系数
     // 2级降采样
-    fir_items[ FIR_F500 ].stage_number = FIR_500_STAGE_NUMBER;
+    fir_items[FIR_F500].stage_number = FIR_500_STAGE_NUMBER;
     // 2级滤波器系数数组
-    fir_items[ FIR_F500 ].stages = (fir_stage_t**)malloc(sizeof(fir_stage_t*) * FIR_500_STAGE_NUMBER);
-    if (NULL == fir_items[ FIR_F500 ].stages){
+    fir_items[FIR_F500].stages = (fir_stage_t**)malloc(sizeof(fir_stage_t*) * FIR_500_STAGE_NUMBER);
+    if (NULL == fir_items[FIR_F500].stages){
         return false;
     }
 
 	int i = 0;
-    for ( i = 0; i < FIR_500_STAGE_NUMBER; ++i) {
-        fir_items[ FIR_F500 ].stages[ i ] = (fir_stage_t*)malloc(sizeof(fir_stage_t));
+    for (i = 0; i < FIR_500_STAGE_NUMBER; ++i) {
+        fir_items[FIR_F500].stages[i] = (fir_stage_t*)malloc(sizeof(fir_stage_t));
     }
     // 第一级
-    fir_items[ FIR_F500 ].stages[ 0 ]->coeff        = fir_500_1stage_coeffs;
-    fir_items[ FIR_F500 ].stages[ 0 ]->decifactor   = FIR_500_1STAGE_DECIFACTOR;
-    fir_items[ FIR_F500 ].stages[ 0 ]->coeff_number = FIR_500_1STAGE_SIZE;
+    fir_items[FIR_F500].stages[0]->coeff        = fir_500_1stage_coeffs; //滤波器系数
+    fir_items[FIR_F500].stages[0]->decifactor   = FIR_500_1STAGE_DECIFACTOR;//抽样点数
+    fir_items[FIR_F500].stages[0]->coeff_number = FIR_500_1STAGE_SIZE;//滤波器系数点数
     // 第二级
-    fir_items[ FIR_F500 ].stages[ 1 ]->coeff        = fir_500_2stage_coeffs;
-    fir_items[ FIR_F500 ].stages[ 1 ]->decifactor   = FIR_500_2STAGE_DECIFACTOR;
-    fir_items[ FIR_F500 ].stages[ 1 ]->coeff_number = FIR_500_2STAGE_SIZE;
+    fir_items[FIR_F500].stages[1]->coeff        = fir_500_2stage_coeffs;
+    fir_items[FIR_F500].stages[1]->decifactor   = FIR_500_2STAGE_DECIFACTOR;
+    fir_items[FIR_F500].stages[1]->coeff_number = FIR_500_2STAGE_SIZE;
 
 
     // 初始化1000Hz档位系数
-    fir_items[ FIR_F1000 ].stage_number = FIR_1000_STAGE_NUMBER;
+    // 1级降采样
+    fir_items[FIR_F1000].stage_number = FIR_1000_STAGE_NUMBER;
     //1级滤波器系数数组
-    fir_items[ FIR_F1000 ].stages = (fir_stage_t**)malloc(sizeof(fir_stage_t*) * FIR_1000_STAGE_NUMBER);
-    if (NULL == fir_items[ FIR_F1000 ].stages)
+    fir_items[FIR_F1000].stages = (fir_stage_t**)malloc(sizeof(fir_stage_t*) * FIR_1000_STAGE_NUMBER);
+    if (NULL == fir_items[FIR_F1000].stages)
     {
         if (fir_items[FIR_F500].stages)
             free(fir_items[FIR_F500].stages);
         return false;
     }
-    for ( i = 0; i < FIR_1000_STAGE_NUMBER; ++i) {
-        fir_items[ FIR_F1000 ].stages[ i ] = (fir_stage_t*)malloc(sizeof(fir_stage_t));
+    for (i = 0; i < FIR_1000_STAGE_NUMBER; ++i) {
+        fir_items[FIR_F1000].stages[i] = (fir_stage_t*)malloc(sizeof(fir_stage_t));
     }
     // 第一级
-    fir_items[ FIR_F1000 ].stages[ 0 ]->coeff        = fir_1000_1stage_coeffs;
-    fir_items[ FIR_F1000 ].stages[ 0 ]->decifactor   = FIR_1000_1STAGE_DECIFACTOR;
-    fir_items[ FIR_F1000 ].stages[ 0 ]->coeff_number = FIR_1000_1STAGE_SIZE;
+    fir_items[FIR_F1000].stages[0]->coeff        = fir_1000_1stage_coeffs;
+    fir_items[FIR_F1000].stages[0]->decifactor   = FIR_1000_1STAGE_DECIFACTOR;
+    fir_items[FIR_F1000].stages[0]->coeff_number = FIR_1000_1STAGE_SIZE;
+
 
     // 初始化2500Hz档位系数
-    fir_items[ FIR_F2500 ].stage_number = FIR_2500_STAGE_NUMBER;
+    // 2级降采样
+    fir_items[FIR_F2500].stage_number = FIR_2500_STAGE_NUMBER;
     // 2级滤波器系数数组
-    fir_items[ FIR_F2500 ].stages = (fir_stage_t**)malloc(sizeof(fir_stage_t*) * FIR_2500_STAGE_NUMBER);
-    if(NULL == fir_items[ FIR_F2500 ].stages)
+    fir_items[FIR_F2500].stages = (fir_stage_t**)malloc(sizeof(fir_stage_t*) * FIR_2500_STAGE_NUMBER);
+    if(NULL == fir_items[FIR_F2500].stages)
     {
         if (fir_items[FIR_F500].stages)
             free(fir_items[FIR_F500].stages);
 
         if (fir_items[FIR_F1000].stages)
             free(fir_items[FIR_F1000].stages);
+
         return false;
     }
-    for ( i = 0; i < FIR_2500_STAGE_NUMBER; ++i) {
-        fir_items[ FIR_F2500 ].stages[ i ] = (fir_stage_t*)malloc(sizeof(fir_stage_t));
+    for (i = 0; i < FIR_2500_STAGE_NUMBER; ++i) {
+        fir_items[FIR_F2500].stages[i] = (fir_stage_t*)malloc(sizeof(fir_stage_t));
     }
 	// 第一级
-    fir_items[ FIR_F2500 ].stages[ 0 ]->coeff        = fir_2500_1stage_coeffs;
-    fir_items[ FIR_F2500 ].stages[ 0 ]->decifactor   = FIR_2500_1STAGE_DECIFACTOR;
-    fir_items[ FIR_F2500 ].stages[ 0 ]->coeff_number = FIR_2500_1STAGE_SIZE;
+    fir_items[FIR_F2500].stages[0]->coeff        = fir_2500_1stage_coeffs;
+    fir_items[FIR_F2500].stages[0]->decifactor   = FIR_2500_1STAGE_DECIFACTOR;
+    fir_items[FIR_F2500].stages[0]->coeff_number = FIR_2500_1STAGE_SIZE;
 	// 第二级
-    fir_items[ FIR_F2500 ].stages[ 1 ]->coeff        = fir_2500_2stage_coeffs;
-    fir_items[ FIR_F2500 ].stages[ 1 ]->decifactor   = FIR_2500_2STAGE_DECIFACTOR;
-    fir_items[ FIR_F2500 ].stages[ 1 ]->coeff_number = FIR_2500_2STAGE_SIZE;
+    fir_items[FIR_F2500].stages[1]->coeff        = fir_2500_2stage_coeffs;
+    fir_items[FIR_F2500].stages[1]->decifactor   = FIR_2500_2STAGE_DECIFACTOR;
+    fir_items[FIR_F2500].stages[1]->coeff_number = FIR_2500_2STAGE_SIZE;
 
 
     // 初始化5000Hz档位系数
-    fir_items[ FIR_F5000 ].stage_number = FIR_5000_STAGE_NUMBER;
-    fir_items[ FIR_F5000 ].stages = (fir_stage_t**)malloc(sizeof(fir_stage_t*) * FIR_5000_STAGE_NUMBER);
-    if (NULL == fir_items[ FIR_F5000 ].stages)
+    // 1级降采样
+    fir_items[FIR_F5000].stage_number = FIR_5000_STAGE_NUMBER;
+    // 1级滤波器系数数组
+    fir_items[FIR_F5000].stages = (fir_stage_t**)malloc(sizeof(fir_stage_t*) * FIR_5000_STAGE_NUMBER);
+    if (NULL == fir_items[FIR_F5000].stages)
     {
         if (fir_items[FIR_F500].stages)
             free(fir_items[FIR_F500].stages);
@@ -485,26 +476,27 @@ bool init_fir_filters(void)
 
         if (fir_items[FIR_F2500].stages)
             free(fir_items[FIR_F2500].stages);
+
         return false;
     }
-    for ( i = 0; i < FIR_5000_STAGE_NUMBER; ++i) {
-        fir_items[ FIR_F5000 ].stages[ i ] = (fir_stage_t*)malloc(sizeof(fir_stage_t));
+    for (i = 0; i < FIR_5000_STAGE_NUMBER; ++i) {
+        fir_items[FIR_F5000].stages[i] = (fir_stage_t*)malloc(sizeof(fir_stage_t));
     }
-    fir_items[ FIR_F5000 ].stages[ 0 ]->coeff        = fir_5000_1stage_coeffs;
-    fir_items[ FIR_F5000 ].stages[ 0 ]->decifactor   = FIR_5000_1STAGE_DECIFACTOR;
-    fir_items[ FIR_F5000 ].stages[ 0 ]->coeff_number = FIR_5000_1STAGE_SIZE;
+    fir_items[FIR_F5000].stages[0]->coeff        = fir_5000_1stage_coeffs;
+    fir_items[FIR_F5000].stages[0]->decifactor   = FIR_5000_1STAGE_DECIFACTOR;
+    fir_items[FIR_F5000].stages[0]->coeff_number = FIR_5000_1STAGE_SIZE;
 
     return true;
 }
 
 /* 功能描述: 运行FIR滤波算法 */
-void run_fir(float *src,
+void run_fir(float *src,//原数据
           int length,  //原数据长度
 		  int coeff_number,//滤波器系数点数
 		  int decifactor,//抽样点数
 		  float *coeffs, //滤波器系数
-		  float *dst
-		  )
+		  float *dst //计算后的数据存储buf
+		 )
 {
 	int    idx       = 0;
     int    position  = 0;
@@ -515,68 +507,61 @@ void run_fir(float *src,
     {
         return;
     }
-	while( cur_items >= coeff_number )//当长度大于等于FIR滤波系数点数，才可以进行滤波计算
+	while(cur_items >= coeff_number)//当长度大于等于FIR滤波系数点数，才可以进行滤波计算
 	{
 		// 每个抽样的点都计算一次
         for (idx = 0; idx < coeff_number; idx++)
         {
             position = read_idx + idx;
-            fir_data += ((src[ position ])*(coeffs[ idx ]));
+            fir_data += ((src[position])*(coeffs[idx]));
         }
 
-		dst[ i++ ] = fir_data ;
+		dst[i++] = fir_data ;
 		fir_data = 0;
-		read_idx  +=  decifactor ;
+		read_idx  += decifactor ;
 		cur_items -= decifactor;
 	}
 }
 
 /* 功能描述：fir低通滤波入口函数 */
-void  enter_fir_filter( float *src_data  , int length  ,  int up_freq)
+void  enter_fir_filter(float *src_data, int length,  int up_freq)
 {
-	//LOGD( "xin: enter_fir_filter_length = %d ,  up_freq = %d " , length , up_freq  );
-
-	int i=0;
-
+	//LOGD("xin: enter_fir_filter_length = %d ,  up_freq = %d " , length , up_freq );
     if(src_data == NULL || length ==0 || up_freq ==0)
     {
         return;
     }
-
-
-	init_fir_filters( );//初始化FIR滤波器系数
-
+	init_fir_filters();//初始化FIR滤波器系数
 	fir_filter_item_t *pfir_filter = NULL;
-	pfir_filter =  get_filter_item_by_up_freq(up_freq);
-
+	pfir_filter =  get_filter_item_by_up_freq(up_freq);//根据上限频率获取对应的滤波器
 
 	float *pdst = NULL;
-	if( pdst == NULL)
+	if(pdst == NULL)
 	{
-		pdst = (float *)malloc( (length/2) *sizeof(float) );
+		pdst = (float *)malloc((length/2)*sizeof(float));
 		if(pdst == NULL)
 		{
-			LOGD( "time_CH1_IIR_buf 分配内存失败！" );
+			LOGD("pdst 分配内存失败！");
 			return;
 		}
-		memset(pdst , 0, (length/2) *sizeof(float));
+		memset(pdst, 0, (length/2)*sizeof(float));
 	}
 
-	for( i=0;i< pfir_filter->stage_number; i++)
+    int i = 0;
+	for(i = 0; i < pfir_filter->stage_number; i++) //循环多少级档位
 	{
-		run_fir( src_data, (length), pfir_filter->stages[i]->coeff_number , pfir_filter->stages[i]->decifactor, pfir_filter->stages[i]->coeff , pdst);
-		memset( src_data,0,(length) * sizeof(float));
-		memcpy( src_data, pdst, (length/2) *sizeof(float));
-        length = length/2;
+		run_fir(src_data, length, pfir_filter->stages[i]->coeff_number , pfir_filter->stages[i]->decifactor, pfir_filter->stages[i]->coeff , pdst);
+		memset(src_data, 0, (length)*sizeof(float));
+		memcpy(src_data, pdst, (length/2)*sizeof(float));
+        length = length/2; //是针对500 2500 两个频率是2级档位，而1000   5000两个频率是1级档位，用不到这句
 	}
 	//for(i = 0;i< 200; i++)
 	//{
 		//LOGD("xin: 经过FIR后src_data[%06d]  = %f",i,src_data[i]);
 	//}
-	if( pdst != NULL)
+	if(pdst != NULL)
 	{
 		free(pdst);
 		pdst = NULL;
 	}
-
 }

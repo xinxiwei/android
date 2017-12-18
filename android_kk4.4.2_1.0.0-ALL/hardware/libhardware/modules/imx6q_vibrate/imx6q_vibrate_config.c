@@ -23,7 +23,7 @@
 #include <sys/timeb.h>
 #include <time.h>
 
-#include <hardware/imx6q_vibrate_config.h>
+#include "imx6q_vibrate_config.h"
 
 #define   SMP_RATE_102400     102400   //除以2.56 =40K
 #define   SMP_RATE_51200      51200    //20K
@@ -35,6 +35,7 @@
 #define   SMP_RATE_2560       2560     //1K
 #define   SMP_RATE_1280       1280     //0.5K
 
+extern int test_mode; //声明内部测试模式, 实际初始化是在imx6q_vibrate.c中
 
 enum {
     HighSpeed , HighPrecision , LowPower , LowSpeed
@@ -552,29 +553,29 @@ void set_sample_rate( int sampleRate )
 	switch( sampleRate )
 	{
 		case SMP_RATE_102400: //OK
-		     LOGD( "enter===SMP_RATE_102400" );
-			 set_adc_mode( HighSpeed );
-			 set_adc_clk( DefaultClk );	//22.2144
-			 break;
+		    LOGD( "enter===SMP_RATE_102400" );
+			set_adc_mode( HighSpeed );
+			set_adc_clk( DefaultClk );	//22.2144
+			break;
 		case SMP_RATE_51200:  //OK
-		     LOGD( "enter===SMP_RATE_51200" );
-		     set_adc_mode( HighPrecision );
-			 set_adc_clk( DefaultClk );
-			 break;
+		    LOGD( "enter===SMP_RATE_51200" );
+		    set_adc_mode( HighPrecision );
+			set_adc_clk( DefaultClk );
+			break;
 		case SMP_RATE_25600: //ok
-			 LOGD( "enter===SMP_RATE_25600" );  //由低功耗模式改为高精度模式
-		     set_adc_mode( LowPower );
-			 set_adc_clk( DefaultHalf );
-             //set_adc_mode( HighPrecision );
-			 //set_adc_clk( DefaultHalf );
-			 break;
+			LOGD( "enter===SMP_RATE_25600" );  //由低功耗模式改为高精度模式
+		    set_adc_mode( LowPower );
+			set_adc_clk( DefaultHalf );
+            //set_adc_mode( HighPrecision );
+			//set_adc_clk( DefaultHalf );
+			break;
 		case SMP_RATE_12800: //OK
-		     LOGD( "enter===SMP_RATE_12800" );//采样速率为12800时，用25.6K 采样率进行 1/2抽点实现
-		     //set_adc_mode( HighPrecision );
-			 //set_adc_clk( DefaultFourth );
-             set_adc_mode( HighPrecision );
-			 set_adc_clk( DefaultHalf );
-			 break;
+		    LOGD( "enter===SMP_RATE_12800" );//采样速率为12800时，用25.6K 采样率进行 1/2抽点实现
+		    //set_adc_mode( HighPrecision );
+			//set_adc_clk( DefaultFourth );
+            set_adc_mode( HighPrecision );
+			set_adc_clk( DefaultHalf );
+			break;
         case SMP_RATE_10240: //OK
 		    LOGD( "enter===SMP_RATE_10240" );
 		    set_adc_mode( LowSpeed );
@@ -607,7 +608,7 @@ void set_sample_rate( int sampleRate )
 			set_adc_clk( DefaultHalf );
 			break;
 		default:
-		     break;
+		    break;
 	}
 }
 
@@ -1006,12 +1007,12 @@ int set_singleCH_vibrate_reg( int signalType , float maxFreq ,  float minFreq) /
         return -1;
     }
     LOGD( "xin:=== test_mode = %d",test_mode );
-    if (test_mode)  ////如果大于0表示内部  测试版本为1， 正式版本为0
+    if (test_mode)  ////如果为1表示内部  测试版本
     {
          //set_24V( CHB ,  true );//设置24v电源的开关激励 , 默认不开启，最终版本是要设为 true
         //set_voltage_range( CHB ,  V2P5 );//设置电压量程 , 默认V25 ,   V25  , V2.5 ,  V0.25
     }
-    else   //最终版本要打开,且adc数据提取要统一打开  *10，单个压力采集要 去掉 *10 代码
+    else   //正式版本为0，最终版本要打开,且adc数据提取要统一打开  *10，单个压力采集要 去掉 *10 代码
     {
         set_24V( CHB ,  true );//设置24v电源的开关激励 , 默认不开启，最终版本是要设为 true
         set_voltage_range( CHB ,  V25 );//设置电压量程 , 默认V25 ,   V25  , V2.5 ,  V0.25

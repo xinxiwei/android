@@ -25,10 +25,10 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <hardware/imx6q_vibrate_config.h>
-#include <hardware/imx6q_spi_vibrate.h>
-#include <hardware/imx6q_iir_filter.h>
-#include <hardware/imx6q_fir_filter.h>
+#include "imx6q_vibrate_config.h"
+#include "imx6q_spi_vibrate.h"
+#include "imx6q_iir_filter.h"
+#include "imx6q_fir_filter.h"
 
 #define DEVICE_NAME "/dev/mxc_spidev1" //从设备
 #define MODULE_NAME "xxxx"
@@ -48,14 +48,13 @@ float vib_reg_fail_buf[1] = {10001}; // 振动采集时当寄存器配置失败�
 float feature_ret_value[FEATURE_NUM] = {0.0}; //15个特征值
 unsigned char read_60K_buf[SIZE_60K] = {0};// 读60K数据buf
 
-
 volatile bool thread_finished_flag = 0; //表示当前线程完成标识
 volatile int  restart_power_on_flag = 0;  // spi 重新上电标识, 0标识需要重新上电
 volatile int  start_enable_flag = 0;// 响应start接口标识
 volatile int  stop_vibrate_smp_flag = 0; // 点击stop时的停止振动采集标识
 
 int  test_mode = 0 ; //初始化内部测试模式,会传给寄存器配置
-volatile int  stop_vsmpflag = 0;//停止振动采集标识
+volatile int  stop_vread_flag = 0;//停止振动读取数据标识
 
 pthread_t  c_id; // 开辟线程 c_id:计算
 sem_t   run_sem; //内部信号名  run_sem: 继续运行信号
@@ -63,8 +62,6 @@ sem_t   run_sem; //内部信号名  run_sem: 继续运行信号
 #define   MAX_SIZE  3284288 //单通道最大（128*1024 + 690000）*4 = 3284288  ,双通道最大（128*1024 + 690000）*2*4 = 6568576    //31457280
 unsigned char g_max_char_buf[ MAX_SIZE ] ={0};
 volatile int g_smpLength = 0; //实际采集的波形长度
-int g_chNum = 0;     //振动通道个数
-
 
 //设备打开和关闭接口
 static int spi_device_open( const struct hw_module_t* module , const char* name , struct hw_device_t** device );
@@ -171,13 +168,12 @@ static int spi_get_val( struct spictl_device_t* dev , int* val ){
 }
 
 ///////////////////共用函数如下
-bool is_right_length(int length)
+bool is_valid_length(int length)
 {
     if(length == 1024 || length == 2048 || length == 4096 || length == 8192 || length == 16384 || length == 32768 || length == 65536 || length == 131072 || length == 262144 )
     {
         return true;
     }else{
-        LOGD("xin: 下发的波形长度 tWave.wave_length = %d",length);
         return false;
     }
 }
@@ -258,7 +254,7 @@ void flag_init() //对所有标识flag 清0
     restart_power_on_flag = 0;
     stop_vibrate_smp_flag = 0;
     start_enable_flag = 0;
-	stop_vsmpflag = 0;
+	stop_vread_flag = 0;
 }
 
 void common_start( )//打开设备和开始fpga采集
@@ -337,7 +333,7 @@ inline void stop_fpga_dma()//停止FPGA采集, DMA搬运，关闭设备文件
         //poweroff_spi(); //停止时下电，会使后台自启动时寄存器失败，从而快速回调寄存器失败异常，这样会造成上层APP收到寄存器失败后变成开始采集，所以去掉此代码
         sem_post( &run_sem );
         return ;
-	}    
+	}
 }
 
 static int stop_vibrate_sample( struct spictl_device_t* dev )//停止振动采集，会将stop_vibrate_smp_ flag 置为1，若为1，stop_fpga-dma时会下电
@@ -362,7 +358,7 @@ static int stop_vibrate_sample( struct spictl_device_t* dev )//停止振动采�
 	if(stop_vibrate_smp_flag == 1)
     {
         LOGD("停止振动采集stop_vibrate_smp_ flag = 1，立即停止采集,调用stop_fpga_ dma函数");
-        stop_vsmpflag = 1; //停止读取数据
+        stop_vread_flag = 1; //停止读取数据
 	    stop_fpga_dma();
     }
 	return 0;
@@ -396,9 +392,9 @@ void read_evalute_data( int signo) //读取振动评估数据    通道2, 下限
 int v_loop_num = 0;
 void read_vibrate_data( int signo) //读取振动采集数据
 {
-    LOGD( "读取振动数据时stop_v smpflag = %d,v_loop_num = %d, g_smpLength = %d , stop_vibrate_smp_ flag =%d  , [%s]\n" ,  stop_vsmpflag, v_loop_num, g_smpLength , stop_vibrate_smp_flag , log_time( ) );
+    LOGD( "读取振动数据时stop_vread_ flag = %d,v_loop_num = %d, g_smpLength = %d , stop_vibrate_smp_ flag =%d  , [%s]\n" ,  stop_vread_flag, v_loop_num, g_smpLength , stop_vibrate_smp_flag , log_time( ) );
 
-	if( stop_vsmpflag )
+	if( stop_vread_flag )
 	{
 		return;
 	}
@@ -414,7 +410,7 @@ void read_vibrate_data( int signo) //读取振动采集数据
 		{
 			LOGD( "Error: spi slave device read fail !\n " );
 		}
-		stop_vsmpflag = 1;
+		stop_vread_flag = 1;
         stop_fpga_dma();
 
 		g_smp_buf =( int* )&( g_max_char_buf ) ;
@@ -436,7 +432,7 @@ void read_vibrate_data( int signo) //读取振动采集数据
 		}
         else if( v_loop_num == shang )
 		{
-            stop_vsmpflag = 1; //flag置1,停止继续读数据
+            stop_vread_flag = 1; //flag置1,停止继续读数据
             stop_fpga_dma();
 
 			memcpy( &g_max_char_buf[SIZE_60K*shang] ,  &read_60K_buf ,  yu*sizeof( float ) );
@@ -461,7 +457,7 @@ void read_vibrate_data( int signo) //读取振动采集数据
 		}
 		else if( v_loop_num == shang )
 		{
-            stop_vsmpflag = 1;
+            stop_vread_flag = 1;
             stop_fpga_dma();
 
             g_smp_buf =( int* )&( g_max_char_buf ) ;
@@ -472,16 +468,22 @@ void read_vibrate_data( int signo) //读取振动采集数据
 	}
 }
 
-int t_discard_pnts = 0,t_max_freq = 0,t_min_freq = 0,t_wave_length = 0;
 void *time_wave_thread( void* arg ) //时域线程
 {
-	timewave my_timewave;
-	my_timewave = *( struct time_wave_para* )arg;
+    timewave my_timewave;
+    my_timewave = *( struct time_wave_para* )arg;     
+    int t_discard_pnts =  get_invalid_num((int)my_timewave.max_freq , (int)my_timewave.min_freq );
+    int t_max_freq = (int)my_timewave.max_freq;
+    int t_min_freq = (int)my_timewave.min_freq;
+    int t_wave_length = my_timewave.wave_length;
+	int t_chNum = my_timewave.ch_num;
+    LOGD("时域线程中 t_chNum = %d, t_discard_pnts = %d, t_max_freq = %d, t_min_freq = %d, t_wave_length = %d",t_chNum,t_discard_pnts,t_max_freq,t_min_freq,t_wave_length);
+    
 	int i=0 ;
     int t_temp_len =0;
 	float t_CH_data[3]={0.0};	 //各振动通道数据
 
-	if( g_chNum == SINGLE_CH )
+	if( t_chNum == SINGLE_CH )
 	{
 		if( t_max_freq == 500 || t_max_freq == 2500 )
 		{
@@ -511,7 +513,7 @@ void *time_wave_thread( void* arg ) //时域线程
             LOGD("时域运算线程进入第一时间，检测到停止振动采集标识，不经过算法，调用stop_DMA_FPGA, 释放内存，初始化flag变量，回调停止采集数据给上层");
             goto  stop_daq;
         }
-		
+
 		sem_wait( &run_sem );//等待信号量
 
 		if(stop_vibrate_smp_flag == 1)//接收信号量后第一时间判断是否有停止振动采集标识
@@ -532,13 +534,13 @@ void *time_wave_thread( void* arg ) //时域线程
 		dis_dc_func(time_CH1_smp_buf, g_smpLength);	 //经过去直流分量算法
 
 		t_temp_len = g_smpLength; ////FIR 低通滤波，单通道，采样长度
-		if(t_max_freq == 500 || t_max_freq == 2500 )//上限是5000 2500是1/4抽样
+		if(t_max_freq == 500 || t_max_freq == 2500 )//上限是500 2500, 是1/4抽样
 		{
 			enter_fir_filter( time_CH1_smp_buf  , t_temp_len, t_max_freq); //FIR 低通滤波
-			t_temp_len = g_smpLength/4 -36; //计算后长度变为1/4
+			t_temp_len = g_smpLength/4 -36; //计算后长度变为1/4(因为是1/4抽样，所以总长度变小，减36是因为前面最初采集多采36个点，过FIR将其减去)
 
 			enter_iir_filter( time_CH1_smp_buf , t_temp_len ,t_max_freq ,t_min_freq ); //IIR 高通滤波
-		}else if( t_max_freq == 1000 || t_max_freq == 5000)	 //上限是1000 5000是1/2抽样
+		}else if( t_max_freq == 1000 || t_max_freq == 5000)	 //上限是1000 5000, 是1/2抽样
 		{
 			enter_fir_filter( time_CH1_smp_buf  , g_smpLength, t_max_freq);
 			t_temp_len = g_smpLength/2 -31; //计算后长度变为1/2
@@ -549,7 +551,7 @@ void *time_wave_thread( void* arg ) //时域线程
 		{
 			enter_iir_filter( time_CH1_smp_buf , t_temp_len ,t_max_freq ,t_min_freq );
 		}
-        
+
 		memcpy( time_CH1_smp_buf ,  &time_CH1_smp_buf[t_discard_pnts] ,  t_wave_length*sizeof( float )  );//经IIR滤波后 去掉丢弃的点
 
         if(stop_vibrate_smp_flag == 1)
@@ -558,7 +560,7 @@ void *time_wave_thread( void* arg ) //时域线程
 			goto stop_daq;
 		}else{
             thread_finished_flag = 1;
-          
+
             flag_init();
             restart_power_on_flag = 1;
             LOGD("时域运算线程正常回调数据  restart_power_on_flag = %d : [%s]\n" ,  restart_power_on_flag, log_time( ) );
@@ -572,20 +574,20 @@ void *time_wave_thread( void* arg ) //时域线程
 		}
         stop_daq:
             {
-				usleep(100000); 
+				usleep(100000);
                 if(fd != -1)
                 {
                     stop_fpga_dma();
-                }            
+                }
                 if( time_CH1_smp_buf !=NULL)
                 {
                     free( time_CH1_smp_buf );
                     time_CH1_smp_buf =NULL;
                 }
                 poweroff_spi( );  //下电
-                
+
                 thread_finished_flag = 1;
-                
+
                 LOGD("时域运算线程异常回调数据 is : [%s]\n" ,  log_time( ) );
                 flag_init();//停止和异常回调 对所有标识flag清0
                 vibrate_callback_backup.single_ch_callback( invalid_buf , 0,  false );//用于停止采集时的异常回调
@@ -595,18 +597,23 @@ void *time_wave_thread( void* arg ) //时域线程
     return NULL;
 }
 
-int r_discard_pnts = 0,r_max_freq = 0,r_min_freq = 0,r_wave_length = 0;
 void *total_rend_thread( void* arg ) //总值趋势线程
 {
     totalrend my_totalrend;
-    my_totalrend = *( struct total_rend_para* )arg;
+    my_totalrend = *( struct total_rend_para* )arg;    
+    int r_max_freq = (int)my_totalrend.max_freq;
+    int r_min_freq = (int)my_totalrend.min_freq;
+    int r_discard_pnts =  get_invalid_num((int)my_totalrend.max_freq , (int)my_totalrend.min_freq );
+    int r_wave_length = my_totalrend.wave_length;  
+    int r_chNum = my_totalrend.ch_num;
+    
 	int i=0;
 	int r_temp_len = 0;
 	float r_CH1_value[1] ={0.0};
 	float r_CH2_value[1] ={0.0};
 	float r_CH_data[3]={0.0};
 
-	if( g_chNum == SINGLE_CH  )
+	if( r_chNum == SINGLE_CH  )
 	{
         if( r_max_freq == 500 || r_max_freq == 2500 )
 		{
@@ -657,15 +664,15 @@ void *total_rend_thread( void* arg ) //总值趋势线程
 			rend_CH1_smp_buf[i] = r_CH_data[2];
 		}
 		dis_dc_func(rend_CH1_smp_buf,g_smpLength); //去除直流分量算法
-	
+
 		r_temp_len = g_smpLength;		////FIR 低通滤波，单通道，采样长度
-		if(r_max_freq == 500 || r_max_freq == 2500 )//上限5000 2500 是1/4抽样
+		if(r_max_freq == 500 || r_max_freq == 2500 )//上限500 2500, 是1/4抽样
 		{
 			enter_fir_filter( rend_CH1_smp_buf  , r_temp_len, r_max_freq); //FIR 低通滤波
 			r_temp_len = g_smpLength/4 -36; //计算后长度变为1/4
 
 			enter_iir_filter( rend_CH1_smp_buf , r_temp_len , r_max_freq , r_min_freq ); //IIR 高通滤波
-		}else if( r_max_freq == 1000 || r_max_freq == 5000)	 //上限1000 5000是1/2抽样
+		}else if( r_max_freq == 1000 || r_max_freq == 5000)	 //上限1000 5000,是1/2抽样
 		{
 			enter_fir_filter( rend_CH1_smp_buf  , r_temp_len,  r_max_freq); //FIR 低通滤波
 			r_temp_len = g_smpLength/2 -31; //计算后长度变为1/2
@@ -680,14 +687,14 @@ void *total_rend_thread( void* arg ) //总值趋势线程
 
 		r_CH1_value[0] = rend_value( rend_CH1_smp_buf , r_wave_length , my_totalrend.total_value_type ); //总值趋势算法
 		LOGD( "SINGLE_CH_总值为 = %f" , r_CH1_value[0] );
-    
+
 	    if(stop_vibrate_smp_flag == 1)
 		{
             LOGD("总值数据线程检测到停止振动采集标识为1，调用stop_DMA_FPGA, 释放内存，初始化flag变量，回调停止采集数据给上层");
             goto stop_daq;
 		}else{
             thread_finished_flag = 1;
-            
+
             flag_init();
             restart_power_on_flag = 1;
             LOGD( "总值数据线程正常回调数据 restart_power_on_flag = %d is : [%s]\n" ,  restart_power_on_flag, log_time( ) );
@@ -701,7 +708,7 @@ void *total_rend_thread( void* arg ) //总值趋势线程
 		}
         stop_daq:
             {
-				usleep(100000); 
+				usleep(100000);
                 if(fd != -1)
                 {
                     stop_fpga_dma();
@@ -712,9 +719,9 @@ void *total_rend_thread( void* arg ) //总值趋势线程
                     rend_CH1_smp_buf =NULL;
                 }
                 poweroff_spi( );  //下电
-                
+
                 thread_finished_flag = 1;
-                
+
                 LOGD("总值数据线程异常回调数据 is : [%s]\n" ,  log_time( ) );
                 flag_init();//停止和异常回调 对所有标识flag清0
                 vibrate_callback_backup.single_ch_callback( invalid_buf  , 0 ,  false ); //用于停止采集时的异常回调
@@ -724,11 +731,16 @@ void *total_rend_thread( void* arg ) //总值趋势线程
     return NULL;
 }
 
-int e_discard_pnts = 0 ,e_max_freq = 0,e_min_freq = 0,e_wave_length = 0;
 void *evalute_level_thread( void* arg ) //振动等级评估线程
 {
     timewave my_timewave;
     my_timewave = *( struct time_wave_para* )arg;
+    int e_discard_pnts = get_invalid_num((int)my_timewave.max_freq , (int)my_timewave.min_freq );
+    int e_max_freq = (int)my_timewave.max_freq;
+    int e_min_freq = (int)my_timewave.min_freq;
+    int e_wave_length = my_timewave.wave_length;
+    int e_chNum = my_timewave.ch_num;
+    
     int i=0;
     int e_temp_len =0;
 	float evalute_value[1] ={0.0};	 //0位:表示速度
@@ -762,7 +774,7 @@ void *evalute_level_thread( void* arg ) //振动等级评估线程
 		analyze_CH_data( g_smp_buf[i] , e_CH_data );
 		evalute_CH1_smp_buf[i] = e_CH_data[2]; //单通道振动采集默认CHB 数据
 	}
-    
+
 	dis_dc_func(evalute_CH1_smp_buf,g_smpLength);
 
 	e_temp_len = g_smpLength; ////FIR 低通滤波，单通道，采样长度
@@ -789,7 +801,7 @@ void *evalute_level_thread( void* arg ) //振动等级评估线程
 	poweroff_spi( );  //下电
 
     thread_finished_flag = 1;
-   
+
     flag_init();//停止和异常回调 对所有标识flag清0
 	vibrate_callback_backup.single_ch_callback( evalute_value , sizeof( evalute_value )/sizeof( float ) , true ); //回调等级评估值
 	LOGD( "SINGLE_CH_回调结束 is : [%s]\n" ,  log_time( ) );
@@ -799,12 +811,12 @@ void *evalute_level_thread( void* arg ) //振动等级评估线程
 
 static int start_vibrate_CH_timewave( struct spictl_device_t* dev ,  int ch_num , struct time_wave_para tWave  )//时域波形
 {
-	if(start_enable_flag == 1) 
+	if(start_enable_flag == 1)
 	{
 		LOGD("start_enable_ flag = 1, 前一个start还未执行完，此时不响应新的start接口, 直接return出去");
         return 0;
 	}else{
-	    start_enable_flag = 1;
+	    start_enable_flag = 1;//start线程一进入就置为1，start全部结束时置为0
 	}
 
     if(stop_vibrate_smp_flag ==1)
@@ -817,22 +829,16 @@ static int start_vibrate_CH_timewave( struct spictl_device_t* dev ,  int ch_num 
     memset(read_60K_buf,0, SIZE_60K*sizeof(unsigned char));
     memset(g_max_char_buf ,0, MAX_SIZE*sizeof(unsigned char));
 
-	g_chNum = ch_num;
 	g_smpLength = 0;
     v_loop_num = 0;
-    stop_vsmpflag = 0;
-    test_mode = tWave.version_mode;
-
-    t_discard_pnts =  get_invalid_num((int)tWave.max_freq , (int)tWave.min_freq );
-    t_max_freq = (int)tWave.max_freq;
-    t_min_freq = (int)tWave.min_freq;
-    t_wave_length = tWave.wave_length;
-
+    stop_vread_flag = 0;
+    test_mode = tWave.version_mode;   
+    tWave.ch_num = ch_num;
     LOGD("点击时域开始时 stop_vibrate_smp_ flag = %d, restart_power_on_flag= %d, thread_finished_flag = %d",stop_vibrate_smp_flag,restart_power_on_flag,thread_finished_flag);
-	
-	if( !is_right_length(tWave.wave_length)) //判断下发的采样长度是否支持
+
+	if( !is_valid_length(tWave.wave_length)) //判断下发的采样长度是否支持
 	{
-        LOGD("振动采集时域波形下发的长度不支持length = %d", t_wave_length);
+        LOGD("振动采集时域波形下发的长度不支持 tWave.wave_length = %d", tWave.wave_length);
 		return 0;
 	}
 
@@ -842,7 +848,7 @@ static int start_vibrate_CH_timewave( struct spictl_device_t* dev ,  int ch_num 
 	}else{
 		poweron_spi(  );
 		int reg_ret_value =0;
-		if( g_chNum == SINGLE_CH )
+		if( ch_num == SINGLE_CH )
         {
 			reg_ret_value = set_singleCH_vibrate_reg( tWave.signal_type , (int)tWave.max_freq , (int)tWave.min_freq);//设置单通道采集寄存器
         }
@@ -850,7 +856,7 @@ static int start_vibrate_CH_timewave( struct spictl_device_t* dev ,  int ch_num 
 		{
             LOGD("寄存器配置失败,回调寄存器失败数据10001, flag全部初始化为0");
 			flag_init(); //停止和异常回调 对所有标识flag清0
-                
+
             poweroff_spi(  );
 			vibrate_callback_backup.single_ch_callback( vib_reg_fail_buf ,1 ,true);//回调寄存器失败数据10001
 			return 0;
@@ -871,6 +877,7 @@ static int start_vibrate_CH_timewave( struct spictl_device_t* dev ,  int ch_num 
     LOGD( "响应时域点击结束 [%s]\n" ,  log_time( ) );
 	return 0;
 }
+
 
 static int start_vibrate_CH_totalrend( struct spictl_device_t* dev ,  int ch_num , struct total_rend_para tRend  )//总值趋势
 {
@@ -893,22 +900,19 @@ static int start_vibrate_CH_totalrend( struct spictl_device_t* dev ,  int ch_num
 	memset(g_max_char_buf ,0, MAX_SIZE*sizeof(unsigned char));
 
     usleep( tRend.interval_time*1000*1000 ); //下次采集间隔时间  微秒为单位
-    g_chNum = ch_num;
+        
 	g_smpLength = 0;
 	v_loop_num = 0;
-    stop_vsmpflag = 0;
-    test_mode = tRend.version_mode;
-
-    r_discard_pnts =  get_invalid_num((int)tRend.max_freq , (int)tRend.min_freq );
-    r_max_freq = (int)tRend.max_freq;
-    r_min_freq = (int)tRend.min_freq;
-    r_wave_length = tRend.wave_length;
+    stop_vread_flag = 0;
+    test_mode = tRend.version_mode;   
+    tRend.ch_num = ch_num;
 
 	LOGD("点击总值开始时 restart_power_on_flag= %d, thread_finished_flag = %d", restart_power_on_flag,thread_finished_flag);
-	
-	if( !is_right_length(tRend.wave_length))
+
+	if( !is_valid_length(tRend.wave_length))
 	{
-        LOGD("振动采集总值趋势下发的长度不支持length = %d", r_wave_length);
+        LOGD("振动采集总值趋势下发的长度不支持 tRend.wave_length = %d", tRend.wave_length);
+        return 0;
 	}
 
 	if(restart_power_on_flag == 1) // 当内部stop DMA，fpga,关闭设备后，flag 置1， 当再启动start接口时不再重新上电，当对外大的停止采集下电后，此flag会置为 0，重新采集时再上电
@@ -917,7 +921,7 @@ static int start_vibrate_CH_totalrend( struct spictl_device_t* dev ,  int ch_num
 	}else{
 		poweron_spi(  );
         int reg_ret_value =0;
-		if( g_chNum ==SINGLE_CH )
+		if( ch_num ==SINGLE_CH )
 		{
             reg_ret_value = set_singleCH_vibrate_reg( tRend.signal_type , (int)tRend.max_freq , (int)tRend.min_freq);//设置单通道采集寄存器
 		}
@@ -956,18 +960,13 @@ static int start_vibrate_evalute_level( struct spictl_device_t* dev , struct tim
     memset(g_max_char_buf ,0, MAX_SIZE*sizeof(unsigned char));
 
 	g_smpLength = 0;
-	test_mode = tWave.version_mode;
-
-    e_discard_pnts = get_invalid_num((int)tWave.max_freq , (int)tWave.min_freq );
-    e_max_freq = (int)tWave.max_freq;
-    e_min_freq = (int)tWave.min_freq;
-    e_wave_length = tWave.wave_length;
+	test_mode = tWave.version_mode;    
 
 	//LOGD( "\n响应振动等级评估开始signal_type = %d ,  min_freq = %d , max_freq = %d , wave_length = %d ,test_mode = %d",	 tWave.signal_type ,  (int)tWave.min_freq ,  (int)tWave.max_freq  , tWave.wave_length, test_mode);
 
-	if( !is_right_length(tWave.wave_length))
+	if( !is_valid_length(tWave.wave_length))
 	{
-		LOGD("振动采集等级评估下发的长度不支持 length = %d", e_wave_length);
+		LOGD("振动采集等级评估下发的长度不支持 tWave.wave_length = %d", tWave.wave_length);
 		return 0;
 	}
 
@@ -991,7 +990,7 @@ static int start_vibrate_evalute_level( struct spictl_device_t* dev , struct tim
     common_start( );
 
  	while( thread_finished_flag == 0); // 用于等待算法线程线束时置1，若线程结束时，继续往下运行
-	
+
     usleep( 100000 );
 	LOGD( "响应振动等级评估结束 [%s]\n" ,  log_time( ) );
 	return 0;

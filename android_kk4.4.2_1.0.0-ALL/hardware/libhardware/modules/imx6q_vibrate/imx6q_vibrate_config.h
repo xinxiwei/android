@@ -23,9 +23,7 @@
 #define GPIO_SET_ON   0X01
 #define GPIO_SET_OFF  0X00
 
-
 #define ADCModeAddr   0
-extern int test_mode; //声明内部测试模式
 
 typedef struct time_wave_para
 {
@@ -43,6 +41,7 @@ typedef struct time_wave_para
      int trig_mode; //触发方式
      float trig_value;//触发电平值
      int version_mode; //内部版本模式
+	 int ch_num; //通道数
 }timewave;
 
 typedef struct freq_wave_para
@@ -65,6 +64,7 @@ typedef struct freq_wave_para
      int trig_mode; //触发方式
      float trig_value;//触发电平值
      int version_mode; //内部版本模式
+	 int ch_num; //通道数
 }freqwave;
 
 typedef struct total_rend_para{
@@ -83,6 +83,7 @@ typedef struct total_rend_para{
      float range_gain_value1;//一级增益
      float range_gain_value2;//二级增益
      int version_mode; //内部版本模式
+	 int ch_num; //通道数
 }totalrend;
 
 #ifdef __cplusplus

@@ -210,7 +210,7 @@ static int invalid_num_table[NUM_SAMPLERATES][NUM_LOWER_FRE] ={
 static int Get_InvalidNum_From_Table( int* table  ,  int  iir_frq  ){
     if(table == NULL)
     {
-        exit( EXIT_FAILURE );
+        return 0;
     }
      switch( iir_frq ){
 	    case 0:{
@@ -545,7 +545,7 @@ static void cascade_iir_filter( float*   data ,
     float  b[3]  = {0.0};
     if(data == NULL|| rev_coeffs == NULL|| for_coeffs ==NULL || w== NULL)
     {
-        exit( EXIT_FAILURE );
+        return;
     }
     //*s1:求级数
     //*s2:滤波
@@ -605,7 +605,7 @@ void integrate_o1( float*  data ,  int len )// ,  float alpha ,  float gamma ,  
     // 入参判断
 	if(data == NULL || len == 0)
     {
-        exit( EXIT_FAILURE );
+        return;
     }
 
 	int u16Loop=0;
@@ -654,16 +654,15 @@ void integrate_o2( float* data ,  int len )// ,  float alpha , float gamma , flo
     // 入参判断
     if(data == NULL || len == 0)
     {
-        exit( EXIT_FAILURE );
+        return;
     }
 
-	LOGD( "alpha = %f , gamma =%f ,  beta = %f ,  factor = %f ,  x1_state = %f ,  x2_state = %f , y1_state = %f ,  y1_state = %f" ,  alpha , gamma , beta , factor , x1_state , x2_state , y1_state , y2_state );
+	LOGD("alpha = %f, gamma =%f,  beta = %f,  factor = %f,  x1_state = %f,  x2_state = %f, y1_state = %f,  y1_state = %f",  alpha, gamma, beta, factor, x1_state, x2_state, y1_state, y2_state);
 
     int u16Loop = 0;
-    for (  u16Loop = 0; u16Loop < len; u16Loop++ )
+    for (u16Loop = 0; u16Loop < len; u16Loop++)
     {
-        fltTemp = ( ( 2*( x1_state ) + ( x2_state ) + data[u16Loop] )*alpha
-                  + ( gamma*( y1_state ) - beta*( y2_state ) ) )*2;
+        fltTemp = ((2*(x1_state) + (x2_state) + data[u16Loop])*alpha + (gamma*(y1_state) - beta*(y2_state)))*2;
         y2_state = y1_state;
         y1_state = fltTemp;
         x2_state = x1_state;
@@ -680,7 +679,7 @@ void integrate_o2( float* data ,  int len )// ,  float alpha , float gamma , flo
 	int i=0;
     if(src_data == NULL)
     {
-        exit( EXIT_FAILURE );
+        return;
     }
 	IIRFilterTable_Init(  );//初始化IIR滤波器系数
 
@@ -693,8 +692,8 @@ void integrate_o2( float* data ,  int len )// ,  float alpha , float gamma , flo
 		state_para = ( float* )malloc( pIIRFilter->numForCoeffs <<2  );
 		if( state_para == NULL )
 		{
-			LOGD( "state_para 分配内存失败！" );
-			exit( EXIT_FAILURE );
+			LOGD("state_para 分配内存失败！");
+			return;
 		}
 		memset( state_para ,  0 ,  sizeof( float )* pIIRFilter->numForCoeffs );
 	}

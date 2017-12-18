@@ -11,7 +11,7 @@ LOCAL_SRC_FILES := imx6q_vibrate.c \
 				   imx6q_spi_vibrate.c \
 				   imx6q_vibrate_config.c \
 				   imx6q_walg_tda.c \
-				   IIRCoeffs.c \
+				   imx6q_iir_coeffs.c \
 				   imx6q_spectrum.c \
 				   imx6q_iir_filter.c \
 				   imx6q_fir_filter.c \				   

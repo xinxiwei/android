@@ -5,14 +5,14 @@
 //履历    :
 //-------------------------
 // 2014-07-19                   模块创建                qiuye
-// 
+//
 
-#include <hardware/IIRCoeffs.h>
+#include "imx6q_iir_coeffs.h"
 
 /***********************************************采样频率102.4kHz**************************************/
 /*截止频率为0.16Hz时，IIR滤波器的系数
-Filter type          : Butterworth Highpass (1 order) 
-Cutoff frequency     : 0.16 Hz (attenuation@-3 dB)   
+Filter type          : Butterworth Highpass (1 order)
+Cutoff frequency     : 0.16 Hz (attenuation@-3 dB)
 Step response edge   :6.9E+5    */
 float S0_F016_ReverseCoeffs[SX_FX_REVERSCOEFFS_COMMON_NUM]={
 		-9.999902E-1,
@@ -136,18 +136,18 @@ float S0_F100_ReverseCoeffs[S0_F100_REVERSCOEFFS_NUM]={
     9.953148E-1
 };
 float S0_F100_ForwardCoeffs[S0_F100_FORWARDCOEFFS_NUM]={
-9.959995E-1,
--1.991999E+0,
-9.959995E-1,
-9.959995E-1,
--1.991999E+0,
-9.959995E-1
+	9.959995E-1,
+	-1.991999E+0,
+	9.959995E-1,
+	9.959995E-1,
+	-1.991999E+0,
+	9.959995E-1
 };
 
 /***********************************************采样频率51.2kHz**************************************/
 /*截止频率为0.16Hz时，IIR滤波器的系数
-Filter type          : Butterworth Highpass (1 order) 
-Cutoff frequency     : 0.16 Hz (attenuation@-3 dB)   
+Filter type          : Butterworth Highpass (1 order)
+Cutoff frequency     : 0.16 Hz (attenuation@-3 dB)
 Step response edge   :348160    */
 float S1_F016_ReverseCoeffs[SX_FX_REVERSCOEFFS_COMMON_NUM]={
 		-9.999804E-1,
@@ -282,8 +282,8 @@ float S1_F100_ForwardCoeffs[S0_F20_FORWARDCOEFFS_NUM]={
 
 /***********************************************采样频率25.6kHz**************************************/
 /*截止频率为0.16Hz时，IIR滤波器的系数
-Filter type          : Butterworth Highpass (1 order) 
-Cutoff frequency     : 0.16 Hz (attenuation@-3 dB)   
+Filter type          : Butterworth Highpass (1 order)
+Cutoff frequency     : 0.16 Hz (attenuation@-3 dB)
 Step response edge   :174080    */
 float S2_F016_ReverseCoeffs[SX_FX_REVERSCOEFFS_COMMON_NUM]={
 		-9.999607E-1,
@@ -428,8 +428,8 @@ float S2_F100_ForwardCoeffs[S0_F20_FORWARDCOEFFS_NUM]={
 
 /***********************************************采样频率12.8kHz**************************************/
 /*截止频率为0.16Hz时，IIR滤波器的系数
-Filter type          : Butterworth Highpass (1 order) 
-Cutoff frequency     : 0.16 Hz (attenuation@-3 dB)   
+Filter type          : Butterworth Highpass (1 order)
+Cutoff frequency     : 0.16 Hz (attenuation@-3 dB)
 Step response edge   :87040    */
 float S3_F016_ReverseCoeffs[SX_FX_REVERSCOEFFS_COMMON_NUM]={
 		-9.999215E-1,
@@ -574,8 +574,8 @@ float S3_F100_ForwardCoeffs[S0_F20_FORWARDCOEFFS_NUM]={
 
 /***********************************************采样频率10.24kHz**************************************/
 /*截止频率为0.16Hz时，IIR滤波器的系数
-Filter type          : Butterworth Highpass (1 order) 
-Cutoff frequency     : 0.16 Hz (attenuation@-3 dB)   
+Filter type          : Butterworth Highpass (1 order)
+Cutoff frequency     : 0.16 Hz (attenuation@-3 dB)
 Step response edge   :69632    */
 float S4_F016_ReverseCoeffs[SX_FX_REVERSCOEFFS_COMMON_NUM]={
 		-9.999018E-1,
@@ -725,8 +725,8 @@ float S4_F100_ForwardCoeffs[S0_F20_FORWARDCOEFFS_NUM]={
 
 /***********************************************采样频率6.4kHz**************************************/
 /*截止频率为0.16Hz时，IIR滤波器的系数
-Filter type          : Butterworth Highpass (1 order) 
-Cutoff frequency     : 0.16 Hz (attenuation@-3 dB)   
+Filter type          : Butterworth Highpass (1 order)
+Cutoff frequency     : 0.16 Hz (attenuation@-3 dB)
 Step response edge   : 43520    */
 float S5_F016_ReverseCoeffs[SX_FX_REVERSCOEFFS_COMMON_NUM]={
 		-9.998429E-1,
@@ -876,8 +876,8 @@ float S5_F100_ForwardCoeffs[S0_F20_FORWARDCOEFFS_NUM]={
 
 /***********************************************采样频率5.12kHz**************************************/
 /*截止频率为0.16Hz时，IIR滤波器的系数
-Filter type          : Butterworth Highpass (1 order) 
-Cutoff frequency     : 0.16 Hz (attenuation@-3 dB)   
+Filter type          : Butterworth Highpass (1 order)
+Cutoff frequency     : 0.16 Hz (attenuation@-3 dB)
 Step response edge   : 34816    */
 float S6_F016_ReverseCoeffs[SX_FX_REVERSCOEFFS_COMMON_NUM]={
 		-9.998037E-1,
@@ -1027,8 +1027,8 @@ float S6_F100_ForwardCoeffs[S0_F20_FORWARDCOEFFS_NUM]={
 
 /***********************************************采样频率2.56kHz**************************************/
 /*截止频率为0.16Hz时，IIR滤波器的系数
-Filter type          : Butterworth Highpass (1 order) 
-Cutoff frequency     : 0.16 Hz (attenuation@-3 dB)   
+Filter type          : Butterworth Highpass (1 order)
+Cutoff frequency     : 0.16 Hz (attenuation@-3 dB)
 Step response edge   : 17408    */
 float S7_F016_ReverseCoeffs[SX_FX_REVERSCOEFFS_COMMON_NUM]={
 		-9.996074E-1,
@@ -1178,8 +1178,8 @@ float S7_F100_ForwardCoeffs[S0_F20_FORWARDCOEFFS_NUM]={
 
 /***********************************************采样频率1.28kHz**************************************/
 /*截止频率为0.16Hz时，IIR滤波器的系数
-Filter type          : Butterworth Highpass (1 order) 
-Cutoff frequency     : 0.16 Hz (attenuation@-3 dB)   
+Filter type          : Butterworth Highpass (1 order)
+Cutoff frequency     : 0.16 Hz (attenuation@-3 dB)
 Step response edge   : 8704    */
 float S8_F016_ReverseCoeffs[SX_FX_REVERSCOEFFS_COMMON_NUM]={
 		-9.992149E-1,
