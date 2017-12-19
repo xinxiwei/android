@@ -25,7 +25,7 @@
 #define SABRESD_YELLOW_LED      IMX_GPIO_NR(6, 15)
 #define SABRESD_GREEN_LED       IMX_GPIO_NR(7, 8)
 #define SABRESD_RED_LED         IMX_GPIO_NR(3, 19)
-//#define BEEP_SOUND_CTR          IMX_GPIO_NR(2, 3) 
+#define BEEP_SOUND_CTR          IMX_GPIO_NR(2, 3) 
 
 #define YELLOW_LED_CTR   (13)
 #define GREEN_LED_CTR    (14)
@@ -187,14 +187,13 @@ static void imx6q_light_probe(void)
     imx6q_lightctl_init();  
 	
 	/////调试开机蜂鸣器一直响的问题
-	/* err = gpio_request(BEEP_SOUND_CTR, "beeper ctr");
+	err = gpio_request(BEEP_SOUND_CTR, "beeper ctr");
 	if(err<0)  
     {  
         printk(KERN_INFO "BEEP_SOUND_CTR gpio request faile \n");  
         return ;  
     } 
 	gpio_direction_output(BEEP_SOUND_CTR, LOW); //等价于 gpio_set_value(BEEP_SOUND_CTR, LOW);
-	 */
 }
 
 

@@ -54,7 +54,7 @@ static int gpio_device_open(const struct hw_module_t* module,const char* name,st
 	dev->gpioctl_close = gpio_close;
     dev->set_backlight_val = gpio_set_backlight_val;
     dev->get_backlight_val = gpio_get_backlight_val;
-    *device =&(dev->common);   
+    *device =&(dev->common);
     return 0;
 }
 
@@ -77,7 +77,7 @@ static int gpio_close(struct gpioctl_device_t* device){
 static int gpiofd = -1;
 static int gpio_set_backlight_val(struct gpioctl_device_t* dev,int value1,int value2){
 	gpiofd = open(DEVICE_NAME,O_RDWR);
-     if(gpiofd == -1){		
+     if(gpiofd == -1){
         ALOGE("gpioctr Stub: failed to open /dev/devbacklightctr -- %s.",strerror(errno));
         free(dev);
         return -EFAULT;
@@ -90,6 +90,7 @@ static int gpio_set_backlight_val(struct gpioctl_device_t* dev,int value1,int va
     }else{
         ALOGD( "HAL层-设置背光灯一直灭");
     }
+    usleep(200000);
 	int ret = ioctl(gpiofd,value1,value2);
 	if(ret<0)
 		{

@@ -26,33 +26,42 @@ int BeepSetFcy(int fcy)
 		event.code = SND_TONE;   //sound type 声音类型
 		event.value = fcy;      //modify value change beep  (0 --->turn off beep)
 		//LOGD("write to beep. fcy = %d",fcy);
+		LOGD("beepfd = %d",beepfd);
 		ret = write(beepfd, &event, sizeof(struct input_event));
 		return ret;
 }
 
- int BeepOpen()
- {
-	 if ((beepfd = open("/dev/input/event2", O_RDWR)) < 0)
-	 {
-		 LOGD("Beep open fail.");
-		 return -1;
-	 }
-	 LOGD( "Beep open /dev/input/event2 success. fd = %d",beepfd);
-	 return 0;
- }
-
- int BeepClose()
+int BeepOpen()
 {
-	LOGD( "Beep close. fd = %d",beepfd);
+	if(beepfd == 0 || beepfd == -1)
+	{
+		beepfd = open("/dev/input/event2", O_RDWR);
+		if ( beepfd == -1 || beepfd == 0)
+		{
+			beepfd = open("/dev/input/event2", O_RDWR);
+			if ( beepfd == -1 )
+			{
+				LOGD("打开beep声设备文件 /dev/input/event2 失败 .");
+				return -1;
+			}
+		}
+	}
+	LOGD( "打开beep声设备文件 /dev/input/event2 成功 beepfd = %d",beepfd);
+	return 0;
+}
+
+int BeepClose()
+{
     if(close(beepfd) < 0)
 	{
-		LOGE( "In BeepClose close(beepfd) error.");
+		LOGD( "关闭beep声设备文件 /dev/input/event2 失败");
 		return -1;
 	}
+    LOGD( "关闭beep声设备文件 /dev/input/event2 成功");
     return 0;
 }
 
- int BeepOff()
+int BeepOff()
 {
 	if(BeepSetFcy(0) < 0)
 	{
@@ -63,9 +72,9 @@ int BeepSetFcy(int fcy)
 }
 
 
- int BeepOn(int count)
+int BeepOn(int count)
 {
-    //LOGE("BeepOn count = %d\n",count);
+    LOGE("BeepOn count = %d\n",count);
 	if(BeepSetFcy(count) < 0)
 	{
 		LOGE( "In BeepOn BeepSetFcy(count) error.");
@@ -73,11 +82,3 @@ int BeepSetFcy(int fcy)
 	}
 	return 0;
 }
-
-
-
-
-
-
-
-

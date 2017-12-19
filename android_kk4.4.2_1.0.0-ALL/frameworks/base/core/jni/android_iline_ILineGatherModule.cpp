@@ -22,7 +22,7 @@
 #include "utils/Log.h"
 #include "utils/misc.h"
 #include "android_runtime/AndroidRuntime.h"
-#include <hardware/imx6q_spi.h>
+#include <hardware/imx6q_press.h>
 #include <hardware/hardware.h>
 #include <pthread.h>
 namespace android {
@@ -41,11 +41,12 @@ static void checkAndClearExceptionFromCallback(JNIEnv* env, const char* methodNa
 	     ALOGE("An exception was thrown by callback '%s'.", methodName);    
          env->ExceptionClear();
      }
- }
+} 
  
 static void request_java_callback(float data[],jboolean isCollectData){
-	ALOGE("jni获取压力回调数据: Gather_data[0] = %f",data[0]);
-
+    
+    ALOGE("jni收到压力采集回调的数据: Gather_data[0] = %f",data[0]);
+    
 	bool isAttacked  = false;
 	JNIEnv* env = NULL;   //JNI_VERSION_1_6
 	int status = gJavaVm->GetEnv((void **)&env, jni_version); //从java 虚拟机获得javaEnv，第一个参数指向JavaEnv， 第二个参数为JNi 版本
@@ -64,8 +65,8 @@ static void request_java_callback(float data[],jboolean isCollectData){
     jfloatArray iarr = env->NewFloatArray(length);
 	
     env->SetFloatArrayRegion(iarr, 0, length, data);
-    env->CallVoidMethod(mPressCallbacksObj, request_press_data_ID, iarr,isCollectData);
-    checkAndClearExceptionFromCallback(env,__FUNCTION__);	
+    env->CallVoidMethod(mPressCallbacksObj, request_press_data_ID, iarr, isCollectData);
+    //checkAndClearExceptionFromCallback(env,__FUNCTION__);	
 	
     if(iarr){
     	env->DeleteLocalRef(iarr);
@@ -79,7 +80,7 @@ static void request_java_callback(float data[],jboolean isCollectData){
 };
 
 static void request_press_stop_callback(jboolean isStop){
-	ALOGE("jni收到压力停止指令: request_press_stop_callback enter");
+	ALOGE("jni收到压力停止回调的数据===== %d", isStop);
 	if (!gJavaVm) {
 		return;
 	}
@@ -104,7 +105,6 @@ static void request_press_stop_callback(jboolean isStop){
 		request_press_data_ID = NULL;
 		mPressCallbacksObj = NULL;	
 	#endif
-	ALOGE("jnitest: request_press_stop_callback exit");
 };
 
 static void request_callback(float data[],bool isCollectData){
@@ -127,10 +127,11 @@ SpiPressureCallbacks mSpiCb = {
 };
 
 static void spictl_ctl_open(const struct hw_module_t* module ,struct spictl_device_t** dev){
-	module->methods->open(module,SPICTL_HARDWARE_MODULE_ID,(struct hw_device_t**)dev);
+	module->methods->open(module,PRESSCTL_HARDWARE_MODULE_ID,(struct hw_device_t**)dev);
 }
 
 static void android_debug_JNITest_startSingleAD(JNIEnv* env, jobject object,float data){  
+    ALOGE("jni主动调用压力表盘采集接口=====");
 	mPressCallbacksObj = env->NewGlobalRef(object);
     jclass clazz = env->GetObjectClass(object);
 	request_press_data_ID = env->GetMethodID(clazz,"requestData", "([FZ)V");
@@ -145,6 +146,7 @@ static void android_debug_JNITest_startSingleAD(JNIEnv* env, jobject object,floa
 }
 
 static void android_debug_JNITest_startGroupAD(JNIEnv* env, jobject object,float data){
+    ALOGE("jni主动调用压力曲线采集接口=====");
 	mPressCallbacksObj = env->NewGlobalRef(object);
     jclass clazz = env->GetObjectClass(object);
 	request_press_data_ID = env->GetMethodID(clazz,"requestData", "([FZ)V");
@@ -159,6 +161,7 @@ static void android_debug_JNITest_startGroupAD(JNIEnv* env, jobject object,float
 }
 
 static void android_debug_JNITest_startCaliAD(JNIEnv* env, jobject object){ 
+    ALOGE("jni主动调用压力标0采集接口=====");
 	mPressCallbacksObj = env->NewGlobalRef(object);
     jclass clazz = env->GetObjectClass(object);
 	request_press_data_ID = env->GetMethodID(clazz,"requestData", "([FZ)V");
@@ -172,7 +175,7 @@ static void android_debug_JNITest_startCaliAD(JNIEnv* env, jobject object){
 }
 
 static jboolean android_debug_JNITest_stopAD(JNIEnv* env, jobject object){
-	ALOGE("JNI层点击STOPAD，停止压力采集");
+	ALOGE("jni主动调用压力停止采集接口=====");
 	if(spictl_dev){
 		jboolean  isStop  = (spictl_dev->stop_press_ad(spictl_dev) == 0);
 		return   isStop;
@@ -190,7 +193,7 @@ static jint android_debug_JNITest_getNativeADFrequency(JNIEnv* env, jobject obje
 static jboolean android_debug_JNITest_startNativeInit(JNIEnv* env, jobject object){	
 	spictl_module_t*  spi_module = NULL;
 	jboolean isStart  = true;
-	if(hw_get_module(SPICTL_HARDWARE_MODULE_ID,(const hw_module_t**)&spi_module) == 0){
+	if(hw_get_module(PRESSCTL_HARDWARE_MODULE_ID,(const hw_module_t**)&spi_module) == 0){
 		spictl_ctl_open(&(spi_module->common),&spictl_dev);
 		isStart = true;
 	}else{

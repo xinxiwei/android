@@ -1,7 +1,7 @@
 #define LOG_TAG "debugStub"
 #include <hardware/hardware.h>
 #include <hardware/imx6q_debug.h>
-#include <hardware/imx6q_spi_config.h>
+
 #include <fcntl.h>
 #include <errno.h>
 #include <cutils/log.h>
