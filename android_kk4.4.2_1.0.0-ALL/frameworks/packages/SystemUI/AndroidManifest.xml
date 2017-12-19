@@ -145,7 +145,13 @@
                 <action android:name="com.android.systemui.recent.action.CANCEL_PRELOAD" />
             </intent-filter>
         </receiver>
-
+		<receiver
+            android:name=".usb.USBBroadcastReceiver"
+            android:exported="false" >
+            <intent-filter android:priority="1000" >
+                <action android:name="android.hardware.usb.action.USB_STATE" />
+            </intent-filter>
+        </receiver>
         <!-- started from UsbDeviceSettingsManager -->
         <activity android:name=".usb.UsbConfirmActivity"
             android:exported="true"

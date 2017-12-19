@@ -69,6 +69,11 @@ public abstract class Ticker {
         StaticLayout getLayout(CharSequence substr) {
             int w = mTextSwitcher.getWidth() - mTextSwitcher.getPaddingLeft()
                     - mTextSwitcher.getPaddingRight();
+			/** add by lianghao 2017.12.5*/
+			if (w < 0) {
+				w = 0;
+			}
+			/** end*/
             return new StaticLayout(substr, mPaint, w, Alignment.ALIGN_NORMAL, 1, 0, true);
         }
 

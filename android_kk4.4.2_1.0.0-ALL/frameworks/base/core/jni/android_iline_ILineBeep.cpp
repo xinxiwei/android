@@ -2,16 +2,16 @@
 **
 ** Copyright 2006, The Android Open Source Project
 **
-** Licensed under the Apache License, Version 2.0 (the "License"); 
-** you may not use this file except in compliance with the License. 
-** You may obtain a copy of the License at 
+** Licensed under the Apache License, Version 2.0 (the "License");
+** you may not use this file except in compliance with the License.
+** You may obtain a copy of the License at
 **
-**     http://www.apache.org/licenses/LICENSE-2.0 
+**     http://www.apache.org/licenses/LICENSE-2.0
 **
-** Unless required by applicable law or agreed to in writing, software 
-** distributed under the License is distributed on an "AS IS" BASIS, 
-** WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
-** See the License for the specific language governing permissions and 
+** Unless required by applicable law or agreed to in writing, software
+** distributed under the License is distributed on an "AS IS" BASIS,
+** WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+** See the License for the specific language governing permissions and
 ** limitations under the License.
 */
 
@@ -29,8 +29,6 @@ namespace android {
 
 
 struct keyctl_device_t* keyctl_dev = NULL;
-struct keyctl_device_t* keyctl_dev2 = NULL;
-
 
 static void keyctl_ctl_open(const struct hw_module_t* module ,struct keyctl_device_t** dev){
 	module->methods->open(module,KEYCTL_HARDWARE_MODULE_ID,(struct hw_device_t**)dev);
@@ -41,32 +39,35 @@ static void android_debug_JNITest_openKey(JNIEnv* env, jobject object){
 	jboolean isStart  = false;
 	if(hw_get_module(KEYCTL_HARDWARE_MODULE_ID,(const hw_module_t**)&keyctl_module) == 0){
 		keyctl_ctl_open(&(keyctl_module->common),&keyctl_dev);
-		ALOGE("startkey SuCESS");
+		//ALOGE("startkey SuCESS");
 		isStart = true;
 	}else{
-		 ALOGE("startkey faile");
-		 isStart = false;
-	}	
+		//ALOGE("startkey faile");
+		isStart = false;
+	}
 }
 
-static void android_debug_JNITest_startKey(JNIEnv* env, jobject object,jint key){
+static void android_debug_JNITest_setBeepKey(JNIEnv* env, jobject object,jint key,jint status){
 	if(keyctl_dev)
-	   keyctl_dev->key_enable(keyctl_dev,key);
+	    keyctl_dev->set_beep_key(keyctl_dev,key, status);
+}
+static void android_debug_JNITest_setSensorKey(JNIEnv* env, jobject object,jint key,jint status){
+	if(keyctl_dev)
+	    keyctl_dev->set_sensor_key(keyctl_dev,key, status);
 }
 
-
-static void android_debug_JNITest_stopKey(JNIEnv* env, jobject object,jint key){
+static void android_debug_JNITest_stopKey(JNIEnv* env, jobject object){
 	if(keyctl_dev){
-		keyctl_dev->key_disable(keyctl_dev,key);
-	}    
+		keyctl_dev->close_key(keyctl_dev);
+	}
 }
-
 
 static JNINativeMethod gMethods[] = {
     /* name, signature, funcPtr */
     { "startOpenKey",      "()V",            (void*) android_debug_JNITest_openKey },
-    { "startNativeKey",      "(I)V",            (void*) android_debug_JNITest_startKey },
-    { "stopNativeKey",      "(I)V",             (void*) android_debug_JNITest_stopKey },   
+    { "setBeepKey",      "(II)V",            (void*) android_debug_JNITest_setBeepKey },
+    { "setSensorKey",      "(II)V",            (void*) android_debug_JNITest_setSensorKey },
+    { "stopNativeKey",      "()V",             (void*) android_debug_JNITest_stopKey },
 };
 
 int register_android_iline_ILineBeep(JNIEnv* env)
@@ -74,5 +75,4 @@ int register_android_iline_ILineBeep(JNIEnv* env)
     return jniRegisterNativeMethods(env, "android/iline/ILineBeep",    gMethods, NELEM(gMethods));
 }
 
-}; 
-
+};

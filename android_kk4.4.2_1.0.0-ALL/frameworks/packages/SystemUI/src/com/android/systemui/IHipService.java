@@ -27,7 +27,7 @@ public class IHipService extends Service{
 		super.onCreate();
 		Log.i("cpz","IhipServiceStart");
 		mBeep = new ILineBeep();
-		mBeep.openDevice();
+		//mBeep.openDevice();
 		
 		mBackLight = new ILineBackLight();
 		
@@ -57,24 +57,23 @@ public class IHipService extends Service{
 			return;
 		if(isOpen){
 			Log.i("cpz","UI打开beep声音");
-			mBeep.openKey(mBeep.BEEP_TYPE);
+			mBeep.setOpen(mBeep.BEEP_TYPE, 1); //打开 
 		}else{
 			Log.i("cpz","UI关闭beep声音");
-			mBeep.closeKey(mBeep.BEEP_TYPE);
+			mBeep.setClose(mBeep.BEEP_TYPE, 0); //关闭
 		}
 	}
 	
 	/*begin add by lianghao */
 	private void changeLightSensor(boolean isOpen){//智能感光
 		if(mBeep == null)
-			return;
-		
+			return;		
 		if(isOpen){
 			Log.i("cpz","UI打开智能感光");
-			mBeep.openKey(mBeep.SENSOR_TYPE);
+			mBeep.setOpen(mBeep.SENSOR_TYPE ,1); //打开
 		}else{
 			Log.i("cpz","UI关闭智能感光");
-			mBeep.closeKey(mBeep.SENSOR_TYPE);
+			mBeep.setClose(mBeep.SENSOR_TYPE, 0); //关闭
 		}
 	}
 	/*end */
@@ -133,8 +132,8 @@ public class IHipService extends Service{
 				//changeLightSensor(false);
             	changeLightState(true);
             }else if(Settings.System.getInt(getContentResolver(), Settings.System.SCREEN_KEY_SMARTLIGHT, 0) == 2){ //智能感光
-				changeLightState(false);
-            	//changeLightSensor(true);
+				//changeLightState(false);
+                //changeLightSensor(true);
             }
         }  
     }

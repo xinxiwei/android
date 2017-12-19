@@ -24,23 +24,35 @@ import java.util.ArrayList;
 public class ILineBeep {
 	public static final int BEEP_TYPE = 1;
 	public static final int SENSOR_TYPE = 2;
+	public static final int BACK_LIGHT = 3;
 	public ILineBeep(){
-		
-	}
-	
-	public void openDevice(){
-		startOpenKey();
-	}
-	public void openKey(int key){
-		startNativeKey(key);
-	}
-	
-	public void closeKey(int key){
-		stopNativeKey(key);
-	}
-	
-    private native void startOpenKey();
-    private native void startNativeKey(int key);
-    private native void stopNativeKey(int key);	    
-}
 
+	}
+
+	public void setOpen(int key, int status){
+		startOpenKey();
+		if(key == 1)
+		{
+			setBeepKey(key,status);
+		}else if(key == 2)
+		{
+			setSensorKey(key,status);
+		}
+	}
+
+	public void setClose(int key,int status){
+		if(key == 1)
+		{
+			setBeepKey(key,status);
+		}else if(key == 2)
+		{
+			setSensorKey(key,status);
+		}
+		//stopNativeKey();
+	}
+
+    private native void startOpenKey();
+    private native void setBeepKey(int key,int status);
+    private native void setSensorKey(int key,int status);
+    private native void stopNativeKey();
+}
