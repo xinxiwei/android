@@ -14,7 +14,7 @@
 /**************************************************************************************
                        Include Files
 **************************************************************************************/
-#include <hardware/imx6q_Spectrum.h>
+#include <hardware/imx6q_spectrum.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -192,7 +192,10 @@ void SDA_Index_Bit_Reverse_Reorder( SLFixData_t Src[] , 	SLFixData_t Dst[] , 	co
 void SIF_Fft( SLData_t* pFFTCoeffs , 	SLFixData_t* pBitReverseAddressTable , SLFixData_t mFFTSize )
 {
 	register long i;
-
+    if(pFFTCoeffs == NULL)
+    {
+        exit( EXIT_FAILURE );
+    }
 	/* Generate Sine and Cos tables */
 	for( i = 0; i <(( 3 * mFFTSize ) >> 2 ); i++ )
 	{
@@ -366,98 +369,44 @@ int WALG_SDA_FftAverage( const float pRealData[] , 		//源数据区
 	return( SIGLIB_NO_ERROR );
 }
 
-
-
-void get_max2( float *p_pfftData ,  int size ) //通过傅立叶得到频谱  y 最大值 ,及对应的index
+/*函数功能：通过傅立叶得到频谱 y 最大值 ,及对应的index */
+void get_fft_max( float *p_pfftData ,  int size ) 
 {
 	int i = 0;
 	int max_value_index = 0;
 	float max_value = 0.0;
+    if(p_pfftData == NULL)
+    {
+        exit( EXIT_FAILURE );
+    }
 	for( i = 0; i < size; i++)
 	{
 		 if( p_pfftData[max_value_index] <= p_pfftData[ i ] ){
-				max_value_index = i;
-				max_value = p_pfftData[max_value_index];
+			max_value_index = i;
+			max_value = p_pfftData[max_value_index];
 		 }
 	}
 	LOGD( "fftdata_max_value = %f ,  max_value_index =%d" , max_value  ,  max_value_index ); ///FFT中数据最大值	
 }
 
-void get_max( float *p_pfftData ,  int size ) //通过傅立叶得到频谱  y 最大值 ,及对应的index
-{
-   int i , j , m;
-   float max_value1=0.0;
-   float max_value2=0.0;
-   float max_value3=0.0;
-   
-   int max_value1_index=0;
-   int max_value2_index=0;
-   int max_value3_index=0;  
-   
-   
-   float tmp_data =0.0;
-   float *p_backupFftData = NULL;
-   if( p_backupFftData == NULL)
-   {
-	   p_backupFftData =( float * )malloc(  size * sizeof( float ) );  
-	   if( p_backupFftData == NULL )
-	   {
-			LOGD( "p_backupFftData 分配内存失败！" );
-			//return 0;
-	   }
-	   memset( p_backupFftData ,  0 ,  sizeof( float )* size );
-   }
-   memcpy( p_backupFftData ,  p_pfftData ,  size *sizeof( float ) ); //备份一份FFT变换后的数据
-   
-   #if 0
-   for( i=0;i<100;i++ )
-   {
-	   LOGD( "p_pfftData[%d] =%f" , i , p_pfftData[i] );
-	   //LOGD( "p_backupFftData[%d] =%f" , i , p_backupFftData[i] );
-   }
-   #endif
-   
-   for( j=0;j<size;j++ )
-   {
-		for( i=0;i<size-1-j;i++ )
-		{
-			if( p_pfftData[i]<p_pfftData[i+1] ) // fft数据由大到小时改为< ,   由小到大>
-			{
-				tmp_data=p_pfftData[i];
-				p_pfftData[i]=p_pfftData[i+1];
-				p_pfftData[i+1]=tmp_data;
-			}
-		}
-   }
-   max_value1=p_pfftData[0];  
-
-   for( m=0;m< size;m++ )//备份数据 和排序后数据对比，求出对应的index
-   {
-		if( p_backupFftData[m] == max_value1 ) max_value1_index=m;		
-   }
-       
-	LOGD( " fftdata max_value1= %f ,  max_value1_index =%d" , max_value1  ,  max_value1_index ); ///FFT中数据最大值
-
-	if( p_backupFftData != NULL)
-	{		
-		free( p_backupFftData );
-		p_backupFftData =NULL;	
-	}
-	
-}
 
 
+/* 定义变量 */
 //float
 SLData_t  *pRealData ,  *pImagData ,  *pWindowCoeffs ,  *pResultsData ,  *pFFTCoeffs ;
 //long
 SLFixData_t  *p_bitReverseAddressTable;
 
+/* 函数功能:频谱计算入口函数 */
 void fft_alg_entry2( float *pSrcBuf ,  long length ,  int window_type ,  int average_mode ,  int average_num )
 {
 	int i=0;	
 	SLFixData_t 	FFT_SIZE =0; //数组元素个数
 	SLFixData_t  	WINDOW_SIZE =0;
-
+    if(pSrcBuf == NULL || length == 0)
+    {
+        exit( EXIT_FAILURE );
+    }
 	FFT_SIZE = length;
 	WINDOW_SIZE = FFT_SIZE;
 	
@@ -496,16 +445,8 @@ void fft_alg_entry2( float *pSrcBuf ,  long length ,  int window_type ,  int ave
 		pSrcBuf[i] *= 2;        	
 	} 
 	
-	
-	#if 0
-	for(i = 0;i < length/2 ;i++)
-	{
-		LOGD( "SpecDstData[%d] = %f" ,  i , pSrcBuf[i] );	
-	}
-    #endif
-	
-	#if 1
-	SLData_t  *pFFTData ;
+#if 0
+/* 	SLData_t  *pFFTData ;
 	pFFTData = SUF_VectorArrayAllocate( FFT_SIZE/2 );
     if( pFFTData == NULL)
 	{
@@ -513,18 +454,16 @@ void fft_alg_entry2( float *pSrcBuf ,  long length ,  int window_type ,  int ave
       exit( EXIT_FAILURE );
 	}
 	memcpy(pFFTData, pSrcBuf, (FFT_SIZE/2)*sizeof(SLData_t));
-	get_max2( pFFTData , FFT_SIZE/2 );  // 求FFT y值最大值，及对应的x 值
-	SUF_MemoryFree( pFFTData ); 
-    #endif 	
-	
+	get_fft_max( pFFTData , FFT_SIZE/2 );  // 求FFT y值最大值，及对应的x 值
+	SUF_MemoryFree( pFFTData );  */
+#endif 		
 	
     SUF_MemoryFree( pRealData );  pRealData = NULL;
     SUF_MemoryFree( pImagData );  pImagData = NULL;
     SUF_MemoryFree( pFFTCoeffs ); pFFTCoeffs = NULL;
     SUF_MemoryFree( pResultsData );	pResultsData = NULL;
 	SUF_MemoryFree( p_bitReverseAddressTable );	 p_bitReverseAddressTable = NULL;
-	SUF_MemoryFree( pWindowCoeffs ); pWindowCoeffs = NULL;
-	   	
+	SUF_MemoryFree( pWindowCoeffs ); pWindowCoeffs = NULL;	   	
 }
 
    
