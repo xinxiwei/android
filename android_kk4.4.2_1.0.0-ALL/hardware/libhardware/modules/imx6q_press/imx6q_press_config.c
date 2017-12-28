@@ -23,7 +23,7 @@
 #include <sys/timeb.h>
 #include <time.h>
 
-#include "imx6q_press_config.h"
+#include <hardware/imx6q_press_config.h>
 
 #define   SMP_RATE_102400     102400   //除以2.56 =40K
 #define   SMP_RATE_51200      51200    //20K

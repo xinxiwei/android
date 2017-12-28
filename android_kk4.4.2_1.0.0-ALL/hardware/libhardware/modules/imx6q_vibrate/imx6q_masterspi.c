@@ -49,14 +49,18 @@ int masterspi_open(  )
 
 int masterspi_close(  )
 {
-	LOGD( "master spi closed. fd = %d" , fd );
+
     if( close( fd ) < 0  )
 	{
 		LOGE( "master spi close error" );
 		return -1;
 	}
+	else{
+        LOGD( "xin: 关闭主spi设备 /dev/spidev0.0 成功. fd = %d" , fd );
+    }
     return 0;
 }
+
 int swrite( unsigned int  laddr , unsigned int data )
 {
 	unsigned int localbuf[2] ={0};

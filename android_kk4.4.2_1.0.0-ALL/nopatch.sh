@@ -60,6 +60,7 @@ rm -rf out/target/product/sabresd_6dq/system/build.prop
 
 set +x
 
+make update-api
 mmm frameworks/base
 mmm frameworks/base/services/java
 mmm frameworks/base/core/jni

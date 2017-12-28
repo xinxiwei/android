@@ -41,7 +41,6 @@ typedef struct time_wave_para
      int trig_mode; //触发方式
      float trig_value;//触发电平值
      int version_mode; //内部版本模式
-	 int ch_num; //通道数
 }timewave;
 
 typedef struct freq_wave_para
@@ -64,7 +63,6 @@ typedef struct freq_wave_para
      int trig_mode; //触发方式
      float trig_value;//触发电平值
      int version_mode; //内部版本模式
-	 int ch_num; //通道数
 }freqwave;
 
 typedef struct total_rend_para{
@@ -83,7 +81,6 @@ typedef struct total_rend_para{
      float range_gain_value1;//一级增益
      float range_gain_value2;//二级增益
      int version_mode; //内部版本模式
-	 int ch_num; //通道数
 }totalrend;
 
 #ifdef __cplusplus
@@ -94,7 +91,7 @@ extern "C"
 	extern void poweron_spi();
 	extern void poweroff_spi();
 
-	extern int  set_singleCH_vibrate_reg(int signal_type,float maxFreq, float minFreq);
+	extern int  set_singleCH_vibrate_reg(int signal_type,float maxFreq, float minFreq, int versionMode);
 	extern char *log_time();
 
 #ifdef __cplusplus

@@ -26,7 +26,6 @@
 #include <sys/param.h>
 #include <sys/stat.h>
 #include <time.h>
-#include <sys/time.h>//itimerval结构体的定义
 
 #define DEVICE_NAME "/dev/input/event0"
 #define MODULE_NAME "xxxxx"
@@ -90,6 +89,7 @@ static int keypad_device_open(const struct hw_module_t* module,const char* name,
     return 0;
 }
 
+
 static int keypad_close(struct keyctl_device_t* device){ //关闭设备
     struct keyctl_device_t* devkey_device = (struct keyctl_device_t*)device;
     if(devkey_device){
@@ -101,24 +101,28 @@ static int keypad_close(struct keyctl_device_t* device){ //关闭设备
 
 void beep_th(void *arg) //声音线程
 {
-    ALOGD("HAL层-enter_KeyOnOff,fd = %d",beep_keys_fd);
+    ALOGD("HAL层-enter_KeyOnOff, beep_keys_fd = %d",beep_keys_fd);
     struct input_event t;
     while (soundOnOff_flag)
     {
         read(beep_keys_fd, &t, sizeof (t));//阻塞读。如果读完了所有消息，线程会阻塞在read函数上。一旦有新的event事件，read函数返回。
-        if(t.type == EV_KEY && t.value == 1)// 按下
+        if(soundOnOff_flag)
         {
-            ALOGD ("HAL层-按键声音 beep_keys_fd = %d, key= %d %s\n", beep_keys_fd, t.code,(t.value) ? "Pressed" : "Released");
-            BeepOn(4000);//蜂鸣器发声。
-            usleep(15000);
-            BeepOn(0);//如果有一个键被按下，停止蜂鸣器
-        }
-        else if(t.type == EV_KEY && t.value == 0)
-        {
+            if(t.type == EV_KEY && t.value == 1)// 按下
+            {
+                ALOGD ("HAL层-按键声音 beep_keys_fd = %d, key= %d %s\n", beep_keys_fd, t.code,(t.value) ? "Pressed" : "Released");
+                BeepOn(4000);//蜂鸣器发声。
+                usleep(15000);
+                BeepOn(0);//如果有一个键被按下，停止蜂鸣器
+            }
+            else if(t.type == EV_KEY && t.value == 0)
+            {
 
+            }
         }
     }
 }
+
 
 static int beep_set_value(struct keyctl_device_t* device,int key,int status)
 {
@@ -137,9 +141,8 @@ static int beep_set_value(struct keyctl_device_t* device,int key,int status)
                 }
             }
         }
-        ALOGD("打开按键设备文件/dev/input/event0成功");
-
-        ALOGD("创建beep线程 th_beep，beep_keys_fd = %d",beep_keys_fd);
+        ALOGD("打开按键设备文件/dev/input/event0成功, beep_keys_fd = %d",beep_keys_fd);
+        ALOGD("创建beep线程");
         int res=pthread_create(&th_beep, NULL, (void *)beep_th, (void *)0);//创建声音线程
         if(res != 0)
         {
@@ -166,66 +169,54 @@ static int beep_set_value(struct keyctl_device_t* device,int key,int status)
 }
 
 
-char* log_time(  )
-{
-	struct  tm      *ptm;
-	struct  timeb   stTimeb;
-	static  char    szTime[19];
-	ftime( &stTimeb );
-	ptm = localtime( &stTimeb.time );
-	sprintf( szTime ,  "%02d-%02d %02d:%02d:%02d.%03d" ,  ptm->tm_mon+1 ,  ptm->tm_mday ,  ptm->tm_hour ,  ptm->tm_min ,  ptm->tm_sec ,  stTimeb.millitm );
-	szTime[18] = 0;
-	return szTime;
-}
-
-volatile int sensor_backlight_en_count = 0;//智能感光保持响应按键 秒数
 void sensor_th(void *arg)//感光线程
 {
     ALOGD("HAL层-enter_sensor_th");
     struct input_event t;
-    while (backlightOnOff_flag)
+    int var_value = 0;
+
+    while (1)
     {
-        read(sensor_keys_fd, &t, sizeof (t));//阻塞读。如果读完了所有消息，线程会阻塞在read函数上。一旦有新的event事件，read函数返回。
-        if(t.type == EV_KEY && t.value == 1)// 有按键，按下
+        if ((sensor_backlight_fd = open("/dev/devbacklightctr", O_RDWR)) < 0)
         {
-            ALOGD ("HAL层-智能感光 sensor_keys_fd = %d, key= %d %s\n",sensor_keys_fd, t.code,(t.value) ? "Pressed" : "Released");
-            sensor_backlight_en_count = 10;//设置智能感光保持响应按键 10s
+            ALOGD("打开智能感光设备文件dev/devbacklightctr 失败.");
+            return ;
+        }else{
+            ALOGD( "打开智能感光设备文件dev/devbacklightctr 成功. fd = %d",sensor_backlight_fd);
         }
-        while(sensor_backlight_en_count)
+
+        sensor_keys_fd = open (DEVICE_NAME, O_RDONLY);
+        if (sensor_keys_fd <= 0)
         {
-            ALOGD("sensor_backlight_en_count = %d",sensor_backlight_en_count);
-            ioctl(sensor_backlight_fd,KEY_LIGHT,1);
+            ALOGD ("打开sensor按键设备文件/dev/input/event0失败!");
+        }
+        else{
+            ALOGD("打开sensor按键设备文件/dev/input/event0成功 fd=%d",sensor_keys_fd);
+        }
+        read(sensor_keys_fd, &t, sizeof (t));//阻塞读。如果读完了所有消息，线程会阻塞在read函数上。一旦有新的event事件，read函数返回。
+        if(backlightOnOff_flag)
+        {
+            if(t.type == EV_KEY && t.value == 1)// 有按键，按下
+            {
+                ALOGD ("HAL层-智能感光 sensor_keys_fd = %d, key= %d %s\n",sensor_keys_fd, t.code,(t.value) ? "Pressed" : "Released");
+                ioctl(sensor_backlight_fd,KEY_LIGHT,1);
+            }else if(t.type == EV_KEY && t.value == 0)
+            {
+                usleep(10000000); //只响应10s
+                ioctl(sensor_backlight_fd,KEY_LIGHT,0);
+                close(sensor_keys_fd);
+            }
+        }else{
+            ALOGD("退出感光线程");
+            return;
         }
     }
 }
 
-void do_alarm(int num)
-{
-    ALOGD("do_alarm****************** sensor_backlight_en_count = %d, [%s]\n",sensor_backlight_en_count ,log_time( ));
-    if(sensor_backlight_en_count > 0)
-        sensor_backlight_en_count--;
-    else
-        ioctl(sensor_backlight_fd,KEY_LIGHT,0);
-    alarm(1); //每隔一秒执行一次函数
-}
 static int sensor_set_value(struct keyctl_device_t* device,int key,int status)
 {
     if(status)
     {
-        if(sensor_keys_fd == 0 || sensor_keys_fd == -1)
-        {
-            sensor_keys_fd = open (DEVICE_NAME, O_RDONLY);
-            if(sensor_keys_fd == 0 || sensor_keys_fd == -1)
-            {
-                sensor_keys_fd = open (DEVICE_NAME, O_RDONLY);
-                if(sensor_keys_fd == -1)
-                {
-                    ALOGD ("打开sensor按键设备文件/dev/input/event0失败!");
-                    return -1;
-                }
-            }
-        }
-        ALOGD("打开sensor按键设备文件/dev/input/event0成功 fd=%d",sensor_keys_fd);
         ALOGD(" 创建智能感光线程 th_sensor ");
         int res=pthread_create(&th_sensor, NULL, (void *)sensor_th, (void *)0);
         if(res != 0)
@@ -234,50 +225,15 @@ static int sensor_set_value(struct keyctl_device_t* device,int key,int status)
             return -1;
         }
     }
-
     if(key == 2)//背光灯
     {
         if(status == 1)
         {
             ALOGD("HAL层-打开智能感光");
-            sensor_backlight_en_count = 0;
             backlightOnOff_flag = 2;
-
-            if(sensor_backlight_fd == 0 || sensor_backlight_fd == -1)
-            {
-                sensor_backlight_fd = open("/dev/devbacklightctr", O_RDWR);
-                if(sensor_backlight_fd == 0 || sensor_backlight_fd == -1)
-                {
-                    sensor_backlight_fd = open("/dev/devbacklightctr", O_RDWR);
-                    if(sensor_backlight_fd == -1)
-                    {
-                        ALOGD ("打开智能感光设备文件dev/devbacklightctr 失败.");
-                        return -1;
-                    }
-                }
-            }
-            ALOGD( "打开智能感光设备文件dev/devbacklightctr 成功. fd = %d",sensor_backlight_fd);
-
-            if(signal(SIGALRM , do_alarm) == SIG_ERR)
-            {
-               ALOGD("register alarm fail");
-               return -1;
-            }
-            alarm(1);//表示第一次1秒后发送SIGALRM信号，后面的alarm是按do_alarm里面的alarm时间来定时
-            while (status) {
-                usleep(1000000); //延时1秒
-            }
         }else{
             ALOGD("HAL层-关闭智能感光");
             backlightOnOff_flag = 0;
-            sensor_backlight_en_count = 0;
-            alarm(0);//取消闹钟
-            if(sensor_backlight_fd >0)
-            {
-                ioctl(sensor_backlight_fd,KEY_LIGHT,0);
-            }
-            close(sensor_keys_fd);
-            sensor_keys_fd = -1;
         }
     }
 	return 0;

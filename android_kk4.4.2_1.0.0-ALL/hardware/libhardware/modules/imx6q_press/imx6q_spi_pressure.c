@@ -652,7 +652,9 @@ float* single_period_max_min( float* p_BufSrc ,  int nperiod_point )
 	return single_period_value;
 }
 
-/* 功能描述：将分段平均后的最大最小值及小段数据返回 */
+/* 功能描述：
+1.先求出原始数据最小值及对应的index值
+2.将分段平均后的最大最小值及小段数据返回 */
 float* get_max_min(  float* p_bufSrc ,  float* p_mretValue ,  int single_period_point )
 {
     int i=0;

@@ -14,7 +14,7 @@
 /**************************************************************************************
                        Include Files
 **************************************************************************************/
-#include "imx6q_spectrum.h"
+#include <hardware/imx6q_spectrum.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -34,7 +34,7 @@
 #include <hardware/masterspi.h>
 #include <hardware/slavespi.h>
 #include <hardware/spidev.h>
-#include "imx6q_spi_vibrate.h"
+#include <hardware/imx6q_spi_vibrate.h>
 #include <sys/timeb.h>
 #include <time.h>
 #include <math.h>

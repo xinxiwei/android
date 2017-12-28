@@ -19,7 +19,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <stdint.h>
-#include "imx6q_fir_filter.h"
+#include <hardware/imx6q_fir_filter.h>
 
 /* FIR低通滤波器，用上限卡 */
 

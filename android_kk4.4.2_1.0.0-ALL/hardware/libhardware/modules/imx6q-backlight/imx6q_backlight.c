@@ -9,7 +9,7 @@
 #include<sys/ioctl.h>
 
 
-#define DEVICE_NAME "/dev/devbacklightctr"
+#define DEVICE_NAME "/dev/devbacklightctr" // 只控制按键背光灯 9
 #define MODULE_NAME "devbacklightctr"
 #define MODULE_AUTHOR "gxl@126.com"
 

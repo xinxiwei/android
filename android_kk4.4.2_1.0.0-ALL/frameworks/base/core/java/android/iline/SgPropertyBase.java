@@ -2,30 +2,30 @@ package android.iline;
 
 /**
  * Created by QueKai on 2017/4/28.
- * 閲囬泦瀹氫箟瀹炰綋绫�
+ * 采集定义实体类
  */
 
 public class SgPropertyBase {
-    private int propID;//閲囬泦瀹氫箟ID
-    private String propName;//閲囬泦瀹氫箟鍚�
-    private int propType;//閲囬泦瀹氫箟绫诲瀷
-    private int chanNum;//閲囬泦閫氶亾鏁�
+    private int propID;//采集定义ID
+    private String propName;//采集定义名
+    private int propType;//采集定义类型
+    private int chanNum;//采集通道数
 
-    private int routeId;//鐐规璁″垝ID
+    private int routeId;//点检计划ID
 
-    private float minFreq;//涓嬮檺棰戠巼
-    private float maxFreq;//涓婇檺棰戠巼
-    private int coupleType;//鑰﹀悎鏂瑰紡
-    private int rangeMode;//閲忕▼妯″紡
-    private int signalType;//淇″彿绫诲瀷
-    private int sensorType;//浼犳劅鍣ㄧ被鍨�
-    private int rangeAcceleration;//閲忕▼鍔犻�熷害
-    private int rangeDistanceValue;//閲忕▼浣嶇疆
-    private int rangeSpeendValue;//閲忕▼閫熷害
-    private int syncMode;//鍚屾鏂瑰紡
-    private float trigLevel;//瑙﹀彂鐢靛钩
-    private float daqFreq;//瀹為檯閲囨牱棰戠巼
-    private int waveLength;//娉㈠舰闀垮害
+    private float minFreq;//下限频率
+    private float maxFreq;//上限频率
+    private int coupleType;//耦合方式
+    private int rangeMode;//量程模式
+    private int signalType;//信号类型
+    private int sensorType;//传感器类型
+    private int rangeAcceleration;//
+    private int rangeDistanceValue;//
+    private int rangeSpeendValue;//
+    private int syncMode;//同步方式
+    private float trigLevel;//触发电平
+    private float daqFreq;//实际采样频率
+    private int waveLength;//波形长度
 	private int versionMode;
 
 	public int getVersionMode(){

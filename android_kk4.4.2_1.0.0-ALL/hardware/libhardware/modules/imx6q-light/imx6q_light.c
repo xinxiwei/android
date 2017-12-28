@@ -9,7 +9,7 @@
 #include<sys/ioctl.h>
 
 
-#define DEVICE_NAME "/dev/devlightctr"
+#define DEVICE_NAME "/dev/devlightctr"  // 控制 红15  绿14  黄13 三个指示灯
 #define MODULE_NAME "devlightctr"
 #define MODULE_AUTHOR "gxl@126.com"
 // 背光四个灯

@@ -34,8 +34,8 @@
 #include <semaphore.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include "imx6q_iir_filter.h"
-#include "imx6q_iir_coeffs.h"
+#include <hardware/imx6q_iir_filter.h>
+#include <hardware/imx6q_iir_coeffs.h>
 /* IIR高通滤波器，用下限卡 */
 //将imx6q_iir_coeffs.c中的滤波器系数在此声明
 extern float S0_F016_ReverseCoeffs[SX_FX_REVERSCOEFFS_COMMON_NUM];//反向系数个数 2
@@ -646,7 +646,8 @@ void integrate_o2(float* data,  int len)//,  float alpha, float gamma, float bet
     int u16Loop = 0;
     for (u16Loop = 0; u16Loop < len; u16Loop++)
     {
-        fltTemp = ((2*(x1_state) + (x2_state) + data[u16Loop])*alpha + (gamma*(y1_state) - beta*(y2_state)))*2;
+        fltTemp = ( ( 2*( x1_state ) + ( x2_state ) + data[u16Loop] )*alpha
+                  + ( gamma*( y1_state ) - beta*( y2_state ) ) )*2;
         y2_state = y1_state;
         y1_state = fltTemp;
         x2_state = x1_state;

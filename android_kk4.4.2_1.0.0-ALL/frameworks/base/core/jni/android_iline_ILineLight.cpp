@@ -1,4 +1,4 @@
-/* //device/libs/android_runtime/android_debug_JNITest.cpp
+ï»¿/* //device/libs/android_runtime/android_debug_JNITest.cpp
 **
 ** Copyright 2006, The Android Open Source Project
 **
@@ -55,7 +55,7 @@ static void android_debug_JNITest_stopDevice(JNIEnv* env, jobject object){
 }
 
 static void android_debug_JNITest_setLight(JNIEnv* env, jobject object,jint light,jint status){
-	//light ÊÇ¼üÖµ£¬»Æ 13, ÂÌ 14, ºì 15£¬ 
+	//light æ˜¯é”®å€¼ï¼Œé»„ 13, ç»¿ 14, çº¢ 15ï¼Œ 
 	//ALOGE("android_debug_JNITest_setLight light = %d, status = %d",light,status);
 	if(gpioctl_dev){
 		gpioctl_dev->set_light_val(gpioctl_dev, light, status); 

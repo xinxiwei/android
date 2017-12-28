@@ -108,7 +108,7 @@ public class ILineGatherModule {
     	}    
     }
     private void requestStopPress( boolean isStop ){
-		Log.i(TAG,"framework�յ�JNI ֹͣ�ɼ��ص���״̬  " + isStop);
+		Log.i(TAG,"framework收到JNI 停止采集回调的状态  " + isStop);
 		if( mCallBack != null ){
 			mCallBack.notifyStopAD( isStop );
 		}

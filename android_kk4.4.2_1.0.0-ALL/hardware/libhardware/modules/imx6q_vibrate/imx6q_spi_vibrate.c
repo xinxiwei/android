@@ -20,7 +20,7 @@
 #include <sys/timeb.h>
 #include <time.h>
 #include <math.h>
-#include "imx6q_walg_tda.h"
+#include <hardware/imx6q_walg_tda.h>
 
 
 #define  SG_TIMESIGNAL_HANDLE_RMS   0 //有效值

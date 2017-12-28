@@ -40,21 +40,24 @@ int masterspi_open(  )
 	mode =0;
 	if( ioctl( fd ,  SPI_IOC_WR_MODE ,  &mode )==-1 )
     {
-        LOGE( "masterspi_open ioctl SPI_IOC_WR_MODE error" );
-        return -1;
+         LOGE( "masterspi_open ioctl SPI_IOC_WR_MODE error" );
+         return -1;
     }
  success:
-        return 0;
+         return 0;
  }
 
 int masterspi_close(  )
 {
-	LOGD( "master spi closed. fd = %d" , fd );
+
     if( close( fd ) < 0  )
 	{
 		LOGE( "master spi close error" );
 		return -1;
 	}
+	else{
+        LOGD( "xin: 关闭主spi设备 /dev/spidev0.0 成功. fd = %d" , fd );
+    }
     return 0;
 }
 int swrite( unsigned int  laddr , unsigned int data )

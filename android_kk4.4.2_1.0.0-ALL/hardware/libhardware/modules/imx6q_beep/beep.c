@@ -46,7 +46,7 @@ int BeepOpen()
 			}
 		}
 	}
-	LOGD( "打开beep声设备文件 /dev/input/event2 成功 beepfd = %d",beepfd);
+	LOGD( "打开beep声设备文件 /dev/input/event2 成功, beepfd = %d",beepfd);
 	return 0;
 }
 
@@ -57,7 +57,7 @@ int BeepClose()
 		LOGD( "关闭beep声设备文件 /dev/input/event2 失败");
 		return -1;
 	}
-    LOGD( "关闭beep声设备文件 /dev/input/event2 成功");
+    LOGD( "关闭beep声设备文件 /dev/input/event2 成功, beepfd = %d",beepfd);
     return 0;
 }
 
