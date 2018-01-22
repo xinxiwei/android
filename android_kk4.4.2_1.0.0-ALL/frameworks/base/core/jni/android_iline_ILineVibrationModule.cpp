@@ -33,14 +33,9 @@ struct spictl_device_t* spictl_dev2 = NULL;
 
 static  const SpiVibrateInterface* sSpiInterface = NULL;
 
-timewave my_timewave ={0,0,0,100,1000,0,0,0,0,1.0,1.0,0,0.0};
-freqwave my_freqwave ={0,0,0,100,400,1,0,0,0,0,0,0,1.0,1.0,0,0.0};
-totalrend my_totalrend ={0,0,0,100,1000,1.00,0,0,0,0,0,1.0,1.0};
-
-static const int VIBRATION_SINGLE_FLAG = 1;
-static const int VIBRATION_DOUBLE_FLAG = 2;
-static const int VIBRATION_ROTATION_FLAG = 3;
-
+timewave my_timewave   ={0,0,0.0,0.0,0.0,0.0,0,0,0,0,0,0,0,0,0,0,0};
+freqwave my_freqwave   ={0,0,0.0,0.0,0.0,0.0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+totalrend my_totalrend ={0,0,0.0,0.0,0.0,0.0,0,0,0,0,0,0,0,0,0,0,0};
 
 //默认构造函数
 jmethodID vib_data_methodID = NULL; //振动数据ID
@@ -70,8 +65,9 @@ struct fields_t {
 	jfieldID trigValue;
 	jfieldID intervalTime;
 	jfieldID totalValueType;
-	jfieldID versionMode;
-
+	jfieldID versionMode; //版本模式
+    jfieldID voltageRange;//电压量程
+    jfieldID chanNum;//电压量程
 };
 
 static fields_t fields;
@@ -83,7 +79,6 @@ static void request_vibration_single_callback(float data[],int length, jboolean 
 	if(!gJavaVm){  //虚拟机为NULL时,直接返回
 		return;
 	}
-
 	bool isAttacked  = false;
 	JNIEnv* env = NULL;   //JNI_VERSION_1_4
 	int status = gJavaVm->GetEnv((void **)&env, version); //从java 虚拟机获得javaEnv，第一个参数指向JavaEnv， 第二个参数为JNi 版本
@@ -141,11 +136,11 @@ static void request_vibration_error_callback(int data, jboolean isCollectData){
 	}
 }
 */
+
 static void request_vibration_double_callback(float data[],float data2[],int length, jboolean isCollect){
 	if(!gJavaVm){
 		return;
 	}
-
 	bool isAttacked  = false;
 	JNIEnv* env = NULL;
 	int status = gJavaVm->GetEnv((void **)&env, version); //从java 虚拟机获得javaEnv，第一个参数指向JavaEnv， 第二个参数为JNi 版本
@@ -158,8 +153,6 @@ static void request_vibration_double_callback(float data[],float data2[],int len
 		}
 		isAttacked  = true;
 	}
-
-
 	jfloatArray farr = env->NewFloatArray(length); //构造指定长度的数组
 	env->SetFloatArrayRegion(farr, 0, length, data); //给数组赋值
 
@@ -180,8 +173,6 @@ static void request_vibration_double_callback(float data[],float data2[],int len
 		gJavaVm->DetachCurrentThread();  //解除当前线程与java虚拟机之间的链接
 	}
 };
-
-
 
 static void request_vibration_stop_callback(jboolean isStop){
     ALOGE("jni层收到振动停止回调的数据==== %d",isStop);
@@ -229,14 +220,12 @@ static void request_stop_callback(bool isStop)//停止回调接口
 	request_vibration_stop_callback(isStop);
 }
 
-
 SpiVibrateCallbacks mSpiCb2 = { //总的回调接口
 	request_single_callback,
 	request_double_callback,
 	request_stop_callback,
    // request_error_callback
 };
-
 
 static void spictl_ctl_open(const struct hw_module_t* module ,struct spictl_device_t** dev){ //打开设备文件
 	module->methods->open(module,VIBRATECTL_HARDWARE_MODULE_ID,(struct hw_device_t**)dev);
@@ -273,16 +262,13 @@ static jboolean android_debug_JNITest_stopNativeAD(JNIEnv* env, jobject object){
 	return false;
 }
 
-static void android_debug_JNITest_startNativeTimeWave(JNIEnv* env, jobject object,jint ch_num,jobject job){//启动时域波形
+static void android_debug_JNITest_startNativeTimeWave(JNIEnv* env, jobject object, jobject job){//启动时域波形
     ALOGE("jni下发启动时域波形接口====");
 	mVibCallbacksObj = env->NewGlobalRef(object);
 	jclass clazz = env->GetObjectClass(object); //从java类的一个引用获得一个jclass 对象
-	if(ch_num == 1)
-	{
-		vib_data_methodID = env->GetMethodID(clazz,"requestSingleData", "([FZ)V"); //GetMethodID 获取对应类的构造函数
-	}else if(ch_num == 2){
-		vib_data_methodID = env->GetMethodID(clazz,"requestDoubleChData", "([F[FZ)V");
-	}
+	
+	vib_data_methodID = env->GetMethodID(clazz,"requestSingleData", "([FZ)V"); //GetMethodID 获取对应类的构造函数
+	
 	//vib_data_methodID = env->GetMethodID(clazz,"requestErrorData", "(IZ)V");
 	vib_stop_methodID = env->GetMethodID(clazz,"requestStopCh", "(Z)V");
 
@@ -300,7 +286,9 @@ static void android_debug_JNITest_startNativeTimeWave(JNIEnv* env, jobject objec
 	fields.trigMode= env->GetFieldID(stucls,"syncMode","I");
 	fields.trigValue= env->GetFieldID(stucls,"trigLevel","F");
 	fields.versionMode= env->GetFieldID(stucls,"versionMode","I");
-
+	fields.voltageRange= env->GetFieldID(stucls,"voltageRange","I");
+    fields.chanNum= env->GetFieldID(stucls,"chanNum","I");
+    
 	my_timewave.data_type = env->GetIntField(job, fields.mPropType);
 	my_timewave.signal_type = env->GetIntField(job, fields.signalType);
 	my_timewave.min_freq = env->GetFloatField(job, fields.minFreq);
@@ -313,26 +301,25 @@ static void android_debug_JNITest_startNativeTimeWave(JNIEnv* env, jobject objec
 	my_timewave.trig_mode = env->GetIntField(job, fields.trigMode);
 	my_timewave.trig_value = env->GetFloatField(job, fields.trigValue);
     my_timewave.version_mode = env->GetIntField(job, fields.versionMode);
+	my_timewave.voltage_range = env->GetIntField(job, fields.voltageRange);
+    my_timewave.chan_num = env->GetIntField(job, fields.chanNum);
 
     //ALOGE("jnitest: my_timewave.version_mode = %d",my_timewave.version_mode);
 	if(spictl_dev2){
-		spictl_dev2->start_vibrate_timewave(spictl_dev2,ch_num,my_timewave);
+		spictl_dev2->start_vibrate_timewave(spictl_dev2, my_timewave);
 	}
 	env->DeleteLocalRef(clazz);
 	env->DeleteLocalRef(stucls);
 }
 
 
-static void android_debug_JNITest_startNativeValueWave(JNIEnv* env, jobject object,jint ch_num,jobject job){//启动总值趋势
+static void android_debug_JNITest_startNativeValueWave(JNIEnv* env, jobject object, jobject job){//启动总值趋势
     ALOGE("jni下发启动总会趋势接口====");
 	mVibCallbacksObj = env->NewGlobalRef(object);
 	jclass clazz = env->GetObjectClass(object);
-	if(ch_num == 1)
-	{
-		vib_data_methodID = env->GetMethodID(clazz,"requestSingleData", "([FZ)V");
-	}else if(ch_num == 2){
-		vib_data_methodID = env->GetMethodID(clazz,"requestDoubleChData", "([F[FZ)V");
-	}
+
+	vib_data_methodID = env->GetMethodID(clazz,"requestSingleData", "([FZ)V");
+	
 	//vib_data_methodID = env->GetMethodID(clazz,"requestErrorData", "(IZ)V");
 	vib_stop_methodID = env->GetMethodID(clazz,"requestStopCh", "(Z)V");
 
@@ -349,6 +336,8 @@ static void android_debug_JNITest_startNativeValueWave(JNIEnv* env, jobject obje
 	fields.rangeDistanceValue= env->GetFieldID(stucls,"rangeDistanceValue","I");
 	fields.rangeSpeendValue= env->GetFieldID(stucls,"rangeSpeendValue","I");
     fields.versionMode= env->GetFieldID(stucls,"versionMode","I");
+	fields.voltageRange = env->GetFieldID(stucls,"voltageRange","I");
+    fields.chanNum = env->GetFieldID(stucls,"chanNum","I");
 
 	my_totalrend.data_type = env->GetIntField(job, fields.mPropType);
 	my_totalrend.signal_type = env->GetIntField(job, fields.signalType);
@@ -362,16 +351,18 @@ static void android_debug_JNITest_startNativeValueWave(JNIEnv* env, jobject obje
 	my_totalrend.range_disp_value = env->GetIntField(job, fields.rangeDistanceValue);
 	my_totalrend.range_speed_value = env->GetIntField(job, fields.rangeSpeendValue);
     my_totalrend.version_mode = env->GetIntField(job, fields.versionMode);
+	my_totalrend.voltage_range = env->GetIntField(job, fields.voltageRange);
+    my_totalrend.chan_num = env->GetIntField(job, fields.chanNum);
 
 	if(spictl_dev2){
-		spictl_dev2->start_vibrate_totalrend(spictl_dev2,ch_num, my_totalrend);
+		spictl_dev2->start_vibrate_totalrend(spictl_dev2, my_totalrend);
 	}
 	env->DeleteLocalRef(clazz);
 	env->DeleteLocalRef(stucls);
 }
 
 
-static void android_debug_JNITest_startNativeEvalute(JNIEnv* env, jobject object,jobject job){//启动等级评估
+static void android_debug_JNITest_startNativeEvalute(JNIEnv* env, jobject object, jobject job){//启动等级评估
     ALOGE("jni下发启动等级评估接口====");
 	mVibCallbacksObj = env->NewGlobalRef(object);
 	jclass clazz = env->GetObjectClass(object);
@@ -394,6 +385,8 @@ static void android_debug_JNITest_startNativeEvalute(JNIEnv* env, jobject object
 	fields.trigMode= env->GetFieldID(stucls,"syncMode","I");
 	fields.trigValue= env->GetFieldID(stucls,"trigLevel","F");
     fields.versionMode= env->GetFieldID(stucls,"versionMode","I");
+	fields.voltageRange= env->GetFieldID(stucls,"voltageRange","I");
+    fields.chanNum= env->GetFieldID(stucls,"chanNum","I");
 
 	my_timewave.data_type = env->GetIntField(job, fields.mPropType);
 	my_timewave.signal_type = env->GetIntField(job, fields.signalType);
@@ -407,9 +400,10 @@ static void android_debug_JNITest_startNativeEvalute(JNIEnv* env, jobject object
 	my_timewave.trig_mode = env->GetIntField(job, fields.trigMode);
 	my_timewave.trig_value = env->GetFloatField(job, fields.trigValue);
 	my_timewave.version_mode = env->GetIntField(job, fields.versionMode);
-
+	my_timewave.voltage_range = env->GetIntField(job, fields.voltageRange);
+	my_timewave.chan_num = env->GetIntField(job, fields.chanNum);
 	if(spictl_dev2){
-		spictl_dev2->start_vibrate_evalute(spictl_dev2,my_timewave);
+		spictl_dev2->start_vibrate_evalute(spictl_dev2, my_timewave);
 	}
 	env->DeleteLocalRef(clazz);
 	env->DeleteLocalRef(stucls);
@@ -448,8 +442,8 @@ static JNINativeMethod gMethods[] = {
     /* name, signature, funcPtr */
 	{"startNativeinit",          "()Z", 	 								(void*) android_debug_JNITest_startNativeinit },
 	{"stopNativeAD",             "()Z",	   									(void*) android_debug_JNITest_stopNativeAD },
-	{"startNativeTimeWave",      "(ILandroid/iline/SgPropertyTime;)V",		(void*) android_debug_JNITest_startNativeTimeWave },
-	{"startNativeValueWave",     "(ILandroid/iline/SgPropertyTotalTrend;)V",(void*) android_debug_JNITest_startNativeValueWave },
+	{"startNativeTimeWave",      "(Landroid/iline/SgPropertyTime;)V",		(void*) android_debug_JNITest_startNativeTimeWave },
+	{"startNativeValueWave",     "(Landroid/iline/SgPropertyTotalTrend;)V", (void*) android_debug_JNITest_startNativeValueWave },
 	{"startNativeEvalute",       "(Landroid/iline/SgPropertyBase;)V",	 	(void*) android_debug_JNITest_startNativeEvalute },
 	{"getNativeFeatureData",     "([FI)[F",	   								(void*) android_debug_JNITest_getNativeFeatureData},
 	{"getNativeTimeToFreqData",  "([FI)[F",									(void*) android_debug_JNITest_getNativeTimeToFreqData},

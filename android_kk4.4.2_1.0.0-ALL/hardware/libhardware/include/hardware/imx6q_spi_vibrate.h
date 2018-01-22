@@ -18,9 +18,13 @@
  */
 #ifndef ANDROID_IMX6Q_SPI_VIBRATE
 #define ANDROID_IMX6Q_SPI_VIBRATE
+#include <stdbool.h>
 //CH number
-#define SINGLE_CH   1
-#define DOUBLE_CH   2
+#define CH_A        0 //压力采集
+#define CH_B        1 //振动采集
+#define CH_R        2 //转速采集
+#define CH_AB       3 //双通道采集
+
 //wave length
 #define WAVE_LEN_1K  1024
 #define WAVE_LEN_2K  2048
@@ -41,6 +45,12 @@ extern "C"
 extern void feature_value(float *pData, int length, float *ret_value);
 extern float rend_value(float *pData,  int length, int totalvalue_type);
 extern void fft_alg_entry2(float *p_buf, long length, int window_type, int average_mode, int average_num);
+extern bool is_valid_length(int length);
+extern inline float adc_data_to_24value(int adc_data);
+extern inline void analyze_CH_data(int adc_data, float *value);
+extern void dis_dc_func(float *src, int length);
+
+extern inline void read_calib_para(int signal_type, int max_freq, int min_freq, int vol_range, float *calib_para);
 
 #ifdef __cplusplus
 };

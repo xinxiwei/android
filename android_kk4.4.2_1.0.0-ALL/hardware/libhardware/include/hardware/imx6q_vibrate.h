@@ -44,8 +44,8 @@ struct spictl_device_t {
     int  (*get_val)(struct spictl_device_t* dev,int* val);
 
 
-	int  (*start_vibrate_timewave)(struct spictl_device_t* dev,  int ch_num, struct time_wave_para wave);
-	int  (*start_vibrate_totalrend)(struct spictl_device_t* dev, int ch_num, struct total_rend_para wave);
+	int  (*start_vibrate_timewave)(struct spictl_device_t* dev, struct time_wave_para wave);
+	int  (*start_vibrate_totalrend)(struct spictl_device_t* dev, struct total_rend_para wave);
 
 	int  (*start_vibrate_evalute)(struct spictl_device_t* dev, struct time_wave_para wave);
 

@@ -422,101 +422,330 @@ static tPIIRFilter get_iir_filter(int SRID,  int FCID) //输入采样率 ，下�
     return &iir_filters_table[index_sr][index_fc];
 }
 
-
-static tIIRFilter gIIRFilter[NUM_SAMPLERATES] ={
-    //102.4K
-	{SX_FX_REVERSCOEFFS_COMMON_NUM, SX_FX_FORWARDCOEFFS_COMMON_NUM, NULL, S0_F016_ReverseCoeffs, S0_F016_ForwardCoeffs},
-	{SX_FX_REVERSCOEFFS_COMMON_NUM, SX_FX_FORWARDCOEFFS_COMMON_NUM, NULL, S0_F1_ReverseCoeffs,   S0_F1_ForwardCoeffs},
-	{SX_FX_REVERSCOEFFS_COMMON_NUM, SX_FX_FORWARDCOEFFS_COMMON_NUM, NULL, S0_F2_ReverseCoeffs,   S0_F2_ForwardCoeffs},
-	{SX_FX_REVERSCOEFFS_COMMON_NUM, SX_FX_FORWARDCOEFFS_COMMON_NUM, NULL, S0_F5_ReverseCoeffs,   S0_F5_ForwardCoeffs},
-	{SX_FX_REVERSCOEFFS_COMMON_NUM, SX_FX_FORWARDCOEFFS_COMMON_NUM, NULL, S0_F10_ReverseCoeffs,  S0_F10_ForwardCoeffs},
-	{S0_F20_REVERSCOEFFS_NUM, S0_F20_FORWARDCOEFFS_NUM,   NULL, S0_F20_ReverseCoeffs,     S0_F20_ForwardCoeffs},
-	{S0_F50_REVERSCOEFFS_NUM, S0_F50_FORWARDCOEFFS_NUM,   NULL, S0_F50_ReverseCoeffs,     S0_F50_ForwardCoeffs},
-	{S0_F100_REVERSCOEFFS_NUM, S0_F100_FORWARDCOEFFS_NUM, NULL, S0_F100_ReverseCoeffs,    S0_F100_ForwardCoeffs},
-    //51.2K
-	{SX_FX_REVERSCOEFFS_COMMON_NUM, SX_FX_FORWARDCOEFFS_COMMON_NUM, NULL, S1_F016_ReverseCoeffs, S1_F016_ForwardCoeffs},
-	{SX_FX_REVERSCOEFFS_COMMON_NUM, SX_FX_FORWARDCOEFFS_COMMON_NUM, NULL, S1_F1_ReverseCoeffs, S1_F1_ForwardCoeffs},
-	{SX_FX_REVERSCOEFFS_COMMON_NUM, SX_FX_FORWARDCOEFFS_COMMON_NUM, NULL, S1_F2_ReverseCoeffs, S1_F2_ForwardCoeffs},
-	{SX_FX_REVERSCOEFFS_COMMON_NUM, SX_FX_FORWARDCOEFFS_COMMON_NUM, NULL, S1_F5_ReverseCoeffs, S1_F5_ForwardCoeffs},
-	{SX_FX_REVERSCOEFFS_COMMON_NUM, SX_FX_FORWARDCOEFFS_COMMON_NUM, NULL, S1_F10_ReverseCoeffs, S1_F10_ForwardCoeffs},
-	{S0_F20_REVERSCOEFFS_NUM, S0_F20_FORWARDCOEFFS_NUM, NULL, S1_F20_ReverseCoeffs, S1_F20_ForwardCoeffs},
-	{S0_F20_REVERSCOEFFS_NUM, S0_F20_FORWARDCOEFFS_NUM, NULL, S1_F50_ReverseCoeffs, S1_F50_ForwardCoeffs},
-	{S0_F20_REVERSCOEFFS_NUM, S0_F20_FORWARDCOEFFS_NUM, NULL, S1_F100_ReverseCoeffs, S1_F100_ForwardCoeffs},
-
-	{SX_FX_REVERSCOEFFS_COMMON_NUM, SX_FX_FORWARDCOEFFS_COMMON_NUM, NULL, S2_F016_ReverseCoeffs, S2_F016_ForwardCoeffs},
-	{SX_FX_REVERSCOEFFS_COMMON_NUM, SX_FX_FORWARDCOEFFS_COMMON_NUM, NULL, S2_F1_ReverseCoeffs, S2_F1_ForwardCoeffs},
-	{SX_FX_REVERSCOEFFS_COMMON_NUM, SX_FX_FORWARDCOEFFS_COMMON_NUM, NULL, S2_F2_ReverseCoeffs, S2_F2_ForwardCoeffs},
-	{S0_F20_REVERSCOEFFS_NUM, S0_F20_FORWARDCOEFFS_NUM,  NULL, S2_F5_ReverseCoeffs, S2_F5_ForwardCoeffs},
-	{S0_F20_REVERSCOEFFS_NUM, S0_F20_FORWARDCOEFFS_NUM,  NULL, S2_F10_ReverseCoeffs, S2_F10_ForwardCoeffs},
-	{S0_F20_REVERSCOEFFS_NUM, S0_F20_FORWARDCOEFFS_NUM,  NULL, S2_F20_ReverseCoeffs, S2_F20_ForwardCoeffs},
-	{S0_F20_REVERSCOEFFS_NUM, S0_F20_FORWARDCOEFFS_NUM,  NULL, S2_F50_ReverseCoeffs, S2_F50_ForwardCoeffs},
-	{S0_F20_REVERSCOEFFS_NUM, S0_F20_FORWARDCOEFFS_NUM,  NULL, S2_F100_ReverseCoeffs, S2_F100_ForwardCoeffs},
-
-	{SX_FX_REVERSCOEFFS_COMMON_NUM, SX_FX_FORWARDCOEFFS_COMMON_NUM, NULL, S3_F016_ReverseCoeffs, S3_F016_ForwardCoeffs},
-	{SX_FX_REVERSCOEFFS_COMMON_NUM, SX_FX_FORWARDCOEFFS_COMMON_NUM, NULL, S3_F1_ReverseCoeffs, S3_F1_ForwardCoeffs},
-	{SX_FX_REVERSCOEFFS_COMMON_NUM, SX_FX_FORWARDCOEFFS_COMMON_NUM, NULL, S3_F2_ReverseCoeffs, S3_F2_ForwardCoeffs},
-	{S0_F20_REVERSCOEFFS_NUM, S0_F20_FORWARDCOEFFS_NUM, NULL, S3_F5_ReverseCoeffs,  S3_F5_ForwardCoeffs},
-	{S0_F20_REVERSCOEFFS_NUM, S0_F20_FORWARDCOEFFS_NUM, NULL, S3_F10_ReverseCoeffs, S3_F10_ForwardCoeffs},
-	{S0_F20_REVERSCOEFFS_NUM, S0_F20_FORWARDCOEFFS_NUM, NULL, S3_F20_ReverseCoeffs, S3_F20_ForwardCoeffs},
-	{S0_F20_REVERSCOEFFS_NUM, S0_F20_FORWARDCOEFFS_NUM, NULL, S3_F50_ReverseCoeffs, S3_F50_ForwardCoeffs},
-	{S0_F20_REVERSCOEFFS_NUM, S0_F20_FORWARDCOEFFS_NUM, NULL, S3_F100_ReverseCoeffs, S3_F100_ForwardCoeffs},
-
-	{SX_FX_REVERSCOEFFS_COMMON_NUM, SX_FX_FORWARDCOEFFS_COMMON_NUM, NULL, S4_F016_ReverseCoeffs, S4_F016_ForwardCoeffs},
-	{SX_FX_REVERSCOEFFS_COMMON_NUM, SX_FX_FORWARDCOEFFS_COMMON_NUM, NULL, S4_F1_ReverseCoeffs, S4_F1_ForwardCoeffs},
-	{S0_F20_REVERSCOEFFS_NUM, S0_F20_FORWARDCOEFFS_NUM, NULL, S4_F2_ReverseCoeffs, S4_F2_ForwardCoeffs},
-	{S0_F20_REVERSCOEFFS_NUM, S0_F20_FORWARDCOEFFS_NUM, NULL, S4_F5_ReverseCoeffs, S4_F5_ForwardCoeffs},
-	{S0_F20_REVERSCOEFFS_NUM, S0_F20_FORWARDCOEFFS_NUM, NULL, S4_F10_ReverseCoeffs, S4_F10_ForwardCoeffs},
-	{S0_F20_REVERSCOEFFS_NUM, S0_F20_FORWARDCOEFFS_NUM, NULL, S4_F20_ReverseCoeffs, S4_F20_ForwardCoeffs},
-	{S0_F20_REVERSCOEFFS_NUM, S0_F20_FORWARDCOEFFS_NUM, NULL, S4_F50_ReverseCoeffs, S4_F50_ForwardCoeffs},
-	{S0_F20_REVERSCOEFFS_NUM, S0_F20_FORWARDCOEFFS_NUM, NULL, S4_F100_ReverseCoeffs, S4_F100_ForwardCoeffs},
-
-	{SX_FX_REVERSCOEFFS_COMMON_NUM, SX_FX_FORWARDCOEFFS_COMMON_NUM, NULL, S5_F016_ReverseCoeffs, S5_F016_ForwardCoeffs},
-	{SX_FX_REVERSCOEFFS_COMMON_NUM, SX_FX_FORWARDCOEFFS_COMMON_NUM, NULL, S5_F1_ReverseCoeffs, S5_F1_ForwardCoeffs},
-	{S0_F20_REVERSCOEFFS_NUM, S0_F20_FORWARDCOEFFS_NUM, NULL, S5_F2_ReverseCoeffs, S5_F2_ForwardCoeffs},
-	{S0_F20_REVERSCOEFFS_NUM, S0_F20_FORWARDCOEFFS_NUM, NULL, S5_F5_ReverseCoeffs, S5_F5_ReverseCoeffs},
-	{S0_F20_REVERSCOEFFS_NUM, S0_F20_FORWARDCOEFFS_NUM, NULL, S5_F10_ReverseCoeffs, S5_F10_ForwardCoeffs},
-	{S0_F20_REVERSCOEFFS_NUM, S0_F20_FORWARDCOEFFS_NUM, NULL, S5_F20_ReverseCoeffs, S5_F20_ForwardCoeffs},
-	{S0_F20_REVERSCOEFFS_NUM, S0_F20_FORWARDCOEFFS_NUM, NULL, S5_F50_ReverseCoeffs, S5_F50_ForwardCoeffs},
-	{S0_F20_REVERSCOEFFS_NUM, S0_F20_FORWARDCOEFFS_NUM, NULL, S5_F100_ReverseCoeffs, S5_F100_ForwardCoeffs},
-
-	{SX_FX_REVERSCOEFFS_COMMON_NUM, SX_FX_FORWARDCOEFFS_COMMON_NUM, NULL, S6_F016_ReverseCoeffs, S6_F016_ForwardCoeffs},
-	{SX_FX_REVERSCOEFFS_COMMON_NUM, SX_FX_FORWARDCOEFFS_COMMON_NUM, NULL, S6_F1_ReverseCoeffs, S6_F1_ForwardCoeffs},
-	{S0_F20_REVERSCOEFFS_NUM, S0_F20_FORWARDCOEFFS_NUM, NULL, S6_F2_ReverseCoeffs, S6_F2_ForwardCoeffs},
-	{S0_F20_REVERSCOEFFS_NUM, S0_F20_FORWARDCOEFFS_NUM, NULL, S6_F5_ReverseCoeffs, S6_F5_ForwardCoeffs},
-	{S0_F20_REVERSCOEFFS_NUM, S0_F20_FORWARDCOEFFS_NUM, NULL, S6_F10_ReverseCoeffs, S6_F10_ForwardCoeffs},
-	{S0_F20_REVERSCOEFFS_NUM, S0_F20_FORWARDCOEFFS_NUM, NULL, S6_F20_ReverseCoeffs, S6_F20_ForwardCoeffs},
-	{S0_F20_REVERSCOEFFS_NUM, S0_F20_FORWARDCOEFFS_NUM, NULL, S6_F50_ReverseCoeffs, S6_F50_ForwardCoeffs},
-	{S0_F20_REVERSCOEFFS_NUM, S0_F20_FORWARDCOEFFS_NUM, NULL, S6_F100_ReverseCoeffs, S6_F100_ForwardCoeffs},
-
-	{SX_FX_REVERSCOEFFS_COMMON_NUM, SX_FX_FORWARDCOEFFS_COMMON_NUM, NULL, S7_F016_ReverseCoeffs, S7_F016_ForwardCoeffs},
-	{SX_FX_REVERSCOEFFS_COMMON_NUM, SX_FX_FORWARDCOEFFS_COMMON_NUM, NULL, S7_F1_ReverseCoeffs, S7_F1_ForwardCoeffs},
-	{S0_F20_REVERSCOEFFS_NUM, S0_F20_FORWARDCOEFFS_NUM, NULL, S7_F2_ReverseCoeffs, S7_F2_ForwardCoeffs},
-	{S0_F20_REVERSCOEFFS_NUM, S0_F20_FORWARDCOEFFS_NUM, NULL, S7_F5_ReverseCoeffs, S7_F5_ForwardCoeffs},
-	{S0_F20_REVERSCOEFFS_NUM, S0_F20_FORWARDCOEFFS_NUM, NULL, S7_F10_ReverseCoeffs, S7_F10_ForwardCoeffs},
-	{S0_F20_REVERSCOEFFS_NUM, S0_F20_FORWARDCOEFFS_NUM, NULL, S7_F20_ReverseCoeffs, S7_F20_ForwardCoeffs},
-	{S0_F20_REVERSCOEFFS_NUM, S0_F20_FORWARDCOEFFS_NUM, NULL, S7_F50_ReverseCoeffs, S7_F50_ForwardCoeffs},
-	{S0_F20_REVERSCOEFFS_NUM, S0_F20_FORWARDCOEFFS_NUM, NULL, S7_F100_ReverseCoeffs, S7_F100_ForwardCoeffs},
-
-	{SX_FX_REVERSCOEFFS_COMMON_NUM, SX_FX_FORWARDCOEFFS_COMMON_NUM, NULL, S8_F016_ReverseCoeffs, S8_F016_ForwardCoeffs},
-	{SX_FX_REVERSCOEFFS_COMMON_NUM, SX_FX_FORWARDCOEFFS_COMMON_NUM, NULL, S8_F1_ReverseCoeffs, S8_F1_ForwardCoeffs},
-	{S0_F20_REVERSCOEFFS_NUM, S0_F20_FORWARDCOEFFS_NUM, NULL, S8_F2_ReverseCoeffs, S8_F2_ForwardCoeffs},
-	{S0_F20_REVERSCOEFFS_NUM, S0_F20_FORWARDCOEFFS_NUM, NULL, S8_F5_ReverseCoeffs, S8_F5_ForwardCoeffs},
-	{S0_F20_REVERSCOEFFS_NUM, S0_F20_FORWARDCOEFFS_NUM, NULL, S8_F10_ReverseCoeffs, S8_F10_ForwardCoeffs},
-	{S0_F20_REVERSCOEFFS_NUM, S0_F20_FORWARDCOEFFS_NUM, NULL, S8_F20_ReverseCoeffs, S8_F20_ForwardCoeffs},
-	{S0_F20_REVERSCOEFFS_NUM, S0_F20_FORWARDCOEFFS_NUM, NULL, S8_F50_ReverseCoeffs, S8_F50_ForwardCoeffs},
-	{S0_F20_REVERSCOEFFS_NUM, S0_F20_FORWARDCOEFFS_NUM, NULL, S8_F100_ReverseCoeffs, S8_F100_ForwardCoeffs},
-};
-
 //初始化IIR滤波器表
 void  init_iir_filters(void)
 {
-   int i = 0, j = 0;
-   for(i = 0; i < NUM_SAMPLERATES ; i++){	//9
-	    for(j = 0; j < NUM_LOWER_FRE; j++){ //8
-		    memcpy(&iir_filters_table[i][j], &gIIRFilter[j], sizeof(tIIRFilter));
-	    }
-   }
-   return ;
+    memset(iir_filters_table, 0, sizeof(iir_filters_table));
+    ///102400
+    iir_filters_table[IIR_S1][IIR_F016].pfltRevCoeffs = S0_F016_ReverseCoeffs;
+    iir_filters_table[IIR_S1][IIR_F016].pfltForCoeffs = S0_F016_ForwardCoeffs;
+    iir_filters_table[IIR_S1][IIR_F016].numRevCoeffs = sizeof(S0_F016_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S1][IIR_F016].numForCoeffs = sizeof(S0_F016_ForwardCoeffs)/ sizeof(float);
+    
+    iir_filters_table[IIR_S1][IIR_F1].pfltRevCoeffs = S0_F1_ReverseCoeffs;
+    iir_filters_table[IIR_S1][IIR_F1].pfltForCoeffs = S0_F1_ForwardCoeffs;
+    iir_filters_table[IIR_S1][IIR_F1].numRevCoeffs = sizeof(S0_F1_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S1][IIR_F1].numForCoeffs = sizeof(S0_F1_ForwardCoeffs)/ sizeof(float);
+    
+    iir_filters_table[IIR_S1][IIR_F2].pfltRevCoeffs = S0_F2_ReverseCoeffs;
+    iir_filters_table[IIR_S1][IIR_F2].pfltForCoeffs = S0_F2_ForwardCoeffs;
+    iir_filters_table[IIR_S1][IIR_F2].numRevCoeffs = sizeof(S0_F2_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S1][IIR_F2].numForCoeffs = sizeof(S0_F2_ForwardCoeffs)/ sizeof(float);    
+
+    iir_filters_table[IIR_S1][IIR_S5].pfltRevCoeffs = S0_F5_ReverseCoeffs;
+    iir_filters_table[IIR_S1][IIR_S5].pfltForCoeffs = S0_F5_ForwardCoeffs;
+    iir_filters_table[IIR_S1][IIR_S5].numRevCoeffs = sizeof(S0_F5_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S1][IIR_S5].numForCoeffs = sizeof(S0_F5_ForwardCoeffs)/ sizeof(float);
+    
+    iir_filters_table[IIR_S1][IIR_F10].pfltRevCoeffs = S0_F10_ReverseCoeffs;
+    iir_filters_table[IIR_S1][IIR_F10].pfltForCoeffs = S0_F10_ForwardCoeffs;
+    iir_filters_table[IIR_S1][IIR_F10].numRevCoeffs = sizeof(S0_F10_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S1][IIR_F10].numForCoeffs = sizeof(S0_F10_ForwardCoeffs)/ sizeof(float);
+    
+    iir_filters_table[IIR_S1][IIR_F20].pfltRevCoeffs = S0_F20_ReverseCoeffs;
+    iir_filters_table[IIR_S1][IIR_F20].pfltForCoeffs = S0_F20_ForwardCoeffs;
+    iir_filters_table[IIR_S1][IIR_F20].numRevCoeffs = sizeof(S0_F20_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S1][IIR_F20].numForCoeffs = sizeof(S0_F20_ForwardCoeffs)/ sizeof(float);
+    
+    iir_filters_table[IIR_S1][IIR_F50].pfltRevCoeffs = S0_F50_ReverseCoeffs;
+    iir_filters_table[IIR_S1][IIR_F50].pfltForCoeffs = S0_F50_ForwardCoeffs;
+    iir_filters_table[IIR_S1][IIR_F50].numRevCoeffs = sizeof(S0_F50_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S1][IIR_F50].numForCoeffs = sizeof(S0_F50_ForwardCoeffs)/ sizeof(float);
+    
+    iir_filters_table[IIR_S1][IIR_F100].pfltRevCoeffs = S0_F100_ReverseCoeffs;
+    iir_filters_table[IIR_S1][IIR_F100].pfltForCoeffs = S0_F100_ForwardCoeffs;
+    iir_filters_table[IIR_S1][IIR_F100].numRevCoeffs = sizeof(S0_F100_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S1][IIR_F100].numForCoeffs = sizeof(S0_F100_ForwardCoeffs)/ sizeof(float);   
+    ///51200
+    iir_filters_table[IIR_S2][IIR_F016].pfltRevCoeffs = S1_F016_ReverseCoeffs;
+    iir_filters_table[IIR_S2][IIR_F016].pfltForCoeffs = S1_F016_ForwardCoeffs;
+    iir_filters_table[IIR_S2][IIR_F016].numRevCoeffs = sizeof(S1_F016_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S2][IIR_F016].numForCoeffs = sizeof(S1_F016_ForwardCoeffs)/ sizeof(float);
+    
+    iir_filters_table[IIR_S2][IIR_F1].pfltRevCoeffs = S1_F1_ReverseCoeffs;
+    iir_filters_table[IIR_S2][IIR_F1].pfltForCoeffs = S1_F1_ForwardCoeffs;
+    iir_filters_table[IIR_S2][IIR_F1].numRevCoeffs = sizeof(S1_F1_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S2][IIR_F1].numForCoeffs = sizeof(S1_F1_ForwardCoeffs)/ sizeof(float);
+    
+    iir_filters_table[IIR_S2][IIR_F2].pfltRevCoeffs = S1_F2_ReverseCoeffs;
+    iir_filters_table[IIR_S2][IIR_F2].pfltForCoeffs = S1_F2_ForwardCoeffs;
+    iir_filters_table[IIR_S2][IIR_F2].numRevCoeffs = sizeof(S1_F2_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S2][IIR_F2].numForCoeffs = sizeof(S1_F2_ForwardCoeffs)/ sizeof(float);    
+
+    iir_filters_table[IIR_S2][IIR_S5].pfltRevCoeffs = S1_F5_ReverseCoeffs;
+    iir_filters_table[IIR_S2][IIR_S5].pfltForCoeffs = S1_F5_ForwardCoeffs;
+    iir_filters_table[IIR_S2][IIR_S5].numRevCoeffs = sizeof(S1_F5_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S2][IIR_S5].numForCoeffs = sizeof(S1_F5_ForwardCoeffs)/ sizeof(float);
+    
+    iir_filters_table[IIR_S2][IIR_F10].pfltRevCoeffs = S1_F10_ReverseCoeffs;
+    iir_filters_table[IIR_S2][IIR_F10].pfltForCoeffs = S1_F10_ForwardCoeffs;
+    iir_filters_table[IIR_S2][IIR_F10].numRevCoeffs = sizeof(S1_F10_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S2][IIR_F10].numForCoeffs = sizeof(S1_F10_ForwardCoeffs)/ sizeof(float);
+    
+    iir_filters_table[IIR_S2][IIR_F20].pfltRevCoeffs = S1_F20_ReverseCoeffs;
+    iir_filters_table[IIR_S2][IIR_F20].pfltForCoeffs = S1_F20_ForwardCoeffs;
+    iir_filters_table[IIR_S2][IIR_F20].numRevCoeffs = sizeof(S1_F20_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S2][IIR_F20].numForCoeffs = sizeof(S1_F20_ForwardCoeffs)/ sizeof(float);
+    
+    iir_filters_table[IIR_S2][IIR_F50].pfltRevCoeffs = S1_F50_ReverseCoeffs;
+    iir_filters_table[IIR_S2][IIR_F50].pfltForCoeffs = S1_F50_ForwardCoeffs;
+    iir_filters_table[IIR_S2][IIR_F50].numRevCoeffs = sizeof(S1_F50_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S2][IIR_F50].numForCoeffs = sizeof(S1_F50_ForwardCoeffs)/ sizeof(float);
+    
+    iir_filters_table[IIR_S2][IIR_F100].pfltRevCoeffs = S1_F100_ReverseCoeffs;
+    iir_filters_table[IIR_S2][IIR_F100].pfltForCoeffs = S1_F100_ForwardCoeffs;
+    iir_filters_table[IIR_S2][IIR_F100].numRevCoeffs = sizeof(S1_F100_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S2][IIR_F100].numForCoeffs = sizeof(S1_F100_ForwardCoeffs)/ sizeof(float);
+    ///25600
+    iir_filters_table[IIR_S3][IIR_F016].pfltRevCoeffs = S2_F016_ReverseCoeffs;
+    iir_filters_table[IIR_S3][IIR_F016].pfltForCoeffs = S2_F016_ForwardCoeffs;
+    iir_filters_table[IIR_S3][IIR_F016].numRevCoeffs = sizeof(S2_F016_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S3][IIR_F016].numForCoeffs = sizeof(S2_F016_ForwardCoeffs)/ sizeof(float);
+
+    iir_filters_table[IIR_S3][IIR_F1].pfltRevCoeffs = S2_F1_ReverseCoeffs;
+    iir_filters_table[IIR_S3][IIR_F1].pfltForCoeffs = S2_F1_ForwardCoeffs;
+    iir_filters_table[IIR_S3][IIR_F1].numRevCoeffs = sizeof(S2_F1_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S3][IIR_F1].numForCoeffs = sizeof(S2_F1_ForwardCoeffs)/ sizeof(float);
+
+    iir_filters_table[IIR_S3][IIR_F2].pfltRevCoeffs = S2_F2_ReverseCoeffs;
+    iir_filters_table[IIR_S3][IIR_F2].pfltForCoeffs = S2_F2_ForwardCoeffs;
+    iir_filters_table[IIR_S3][IIR_F2].numRevCoeffs = sizeof(S2_F2_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S3][IIR_F2].numForCoeffs = sizeof(S2_F2_ForwardCoeffs)/ sizeof(float);    
+
+    iir_filters_table[IIR_S3][IIR_S5].pfltRevCoeffs = S2_F5_ReverseCoeffs;
+    iir_filters_table[IIR_S3][IIR_S5].pfltForCoeffs = S2_F5_ForwardCoeffs;
+    iir_filters_table[IIR_S3][IIR_S5].numRevCoeffs = sizeof(S2_F5_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S3][IIR_S5].numForCoeffs = sizeof(S2_F5_ForwardCoeffs)/ sizeof(float);
+
+    iir_filters_table[IIR_S3][IIR_F10].pfltRevCoeffs = S2_F10_ReverseCoeffs;
+    iir_filters_table[IIR_S3][IIR_F10].pfltForCoeffs = S2_F10_ForwardCoeffs;
+    iir_filters_table[IIR_S3][IIR_F10].numRevCoeffs = sizeof(S2_F10_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S3][IIR_F10].numForCoeffs = sizeof(S2_F10_ForwardCoeffs)/ sizeof(float);
+
+    iir_filters_table[IIR_S3][IIR_F20].pfltRevCoeffs = S2_F20_ReverseCoeffs;
+    iir_filters_table[IIR_S3][IIR_F20].pfltForCoeffs = S2_F20_ForwardCoeffs;
+    iir_filters_table[IIR_S3][IIR_F20].numRevCoeffs = sizeof(S2_F20_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S3][IIR_F20].numForCoeffs = sizeof(S2_F20_ForwardCoeffs)/ sizeof(float);
+
+    iir_filters_table[IIR_S3][IIR_F50].pfltRevCoeffs = S2_F50_ReverseCoeffs;
+    iir_filters_table[IIR_S3][IIR_F50].pfltForCoeffs = S2_F50_ForwardCoeffs;
+    iir_filters_table[IIR_S3][IIR_F50].numRevCoeffs = sizeof(S2_F50_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S3][IIR_F50].numForCoeffs = sizeof(S2_F50_ForwardCoeffs)/ sizeof(float);
+
+    iir_filters_table[IIR_S3][IIR_F100].pfltRevCoeffs = S2_F100_ReverseCoeffs;
+    iir_filters_table[IIR_S3][IIR_F100].pfltForCoeffs = S2_F100_ForwardCoeffs;
+    iir_filters_table[IIR_S3][IIR_F100].numRevCoeffs = sizeof(S2_F100_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S3][IIR_F100].numForCoeffs = sizeof(S2_F100_ForwardCoeffs)/ sizeof(float);
+    ///12800
+    iir_filters_table[IIR_S4][IIR_F016].pfltRevCoeffs = S3_F016_ReverseCoeffs;
+    iir_filters_table[IIR_S4][IIR_F016].pfltForCoeffs = S3_F016_ForwardCoeffs;
+    iir_filters_table[IIR_S4][IIR_F016].numRevCoeffs = sizeof(S3_F016_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S4][IIR_F016].numForCoeffs = sizeof(S3_F016_ForwardCoeffs)/ sizeof(float);
+
+    iir_filters_table[IIR_S4][IIR_F1].pfltRevCoeffs = S3_F1_ReverseCoeffs;
+    iir_filters_table[IIR_S4][IIR_F1].pfltForCoeffs = S3_F1_ForwardCoeffs;
+    iir_filters_table[IIR_S4][IIR_F1].numRevCoeffs = sizeof(S3_F1_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S4][IIR_F1].numForCoeffs = sizeof(S3_F1_ForwardCoeffs)/ sizeof(float);
+
+    iir_filters_table[IIR_S4][IIR_F2].pfltRevCoeffs = S3_F2_ReverseCoeffs;
+    iir_filters_table[IIR_S4][IIR_F2].pfltForCoeffs = S3_F2_ForwardCoeffs;
+    iir_filters_table[IIR_S4][IIR_F2].numRevCoeffs = sizeof(S3_F2_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S4][IIR_F2].numForCoeffs = sizeof(S3_F2_ForwardCoeffs)/ sizeof(float);    
+
+    iir_filters_table[IIR_S4][IIR_S5].pfltRevCoeffs = S3_F5_ReverseCoeffs;
+    iir_filters_table[IIR_S4][IIR_S5].pfltForCoeffs = S3_F5_ForwardCoeffs;
+    iir_filters_table[IIR_S4][IIR_S5].numRevCoeffs = sizeof(S3_F5_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S4][IIR_S5].numForCoeffs = sizeof(S3_F5_ForwardCoeffs)/ sizeof(float);
+
+    iir_filters_table[IIR_S4][IIR_F10].pfltRevCoeffs = S3_F10_ReverseCoeffs;
+    iir_filters_table[IIR_S4][IIR_F10].pfltForCoeffs = S3_F10_ForwardCoeffs;
+    iir_filters_table[IIR_S4][IIR_F10].numRevCoeffs = sizeof(S3_F10_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S4][IIR_F10].numForCoeffs = sizeof(S3_F10_ForwardCoeffs)/ sizeof(float);
+
+    iir_filters_table[IIR_S4][IIR_F20].pfltRevCoeffs = S3_F20_ReverseCoeffs;
+    iir_filters_table[IIR_S4][IIR_F20].pfltForCoeffs = S3_F20_ForwardCoeffs;
+    iir_filters_table[IIR_S4][IIR_F20].numRevCoeffs = sizeof(S3_F20_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S4][IIR_F20].numForCoeffs = sizeof(S3_F20_ForwardCoeffs)/ sizeof(float);
+
+    iir_filters_table[IIR_S4][IIR_F50].pfltRevCoeffs = S3_F50_ReverseCoeffs;
+    iir_filters_table[IIR_S4][IIR_F50].pfltForCoeffs = S3_F50_ForwardCoeffs;
+    iir_filters_table[IIR_S4][IIR_F50].numRevCoeffs = sizeof(S3_F50_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S4][IIR_F50].numForCoeffs = sizeof(S3_F50_ForwardCoeffs)/ sizeof(float);
+
+    iir_filters_table[IIR_S4][IIR_F100].pfltRevCoeffs = S3_F100_ReverseCoeffs;
+    iir_filters_table[IIR_S4][IIR_F100].pfltForCoeffs = S3_F100_ForwardCoeffs;
+    iir_filters_table[IIR_S4][IIR_F100].numRevCoeffs = sizeof(S3_F100_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S4][IIR_F100].numForCoeffs = sizeof(S3_F100_ForwardCoeffs)/ sizeof(float);
+    ///6400
+    iir_filters_table[IIR_S5][IIR_F016].pfltRevCoeffs = S4_F016_ReverseCoeffs;
+    iir_filters_table[IIR_S5][IIR_F016].pfltForCoeffs = S4_F016_ForwardCoeffs;
+    iir_filters_table[IIR_S5][IIR_F016].numRevCoeffs = sizeof(S4_F016_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S5][IIR_F016].numForCoeffs = sizeof(S4_F016_ForwardCoeffs)/ sizeof(float);
+
+    iir_filters_table[IIR_S5][IIR_F1].pfltRevCoeffs = S4_F1_ReverseCoeffs;
+    iir_filters_table[IIR_S5][IIR_F1].pfltForCoeffs = S4_F1_ForwardCoeffs;
+    iir_filters_table[IIR_S5][IIR_F1].numRevCoeffs = sizeof(S4_F1_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S5][IIR_F1].numForCoeffs = sizeof(S4_F1_ForwardCoeffs)/ sizeof(float);
+
+    iir_filters_table[IIR_S5][IIR_F2].pfltRevCoeffs = S4_F2_ReverseCoeffs;
+    iir_filters_table[IIR_S5][IIR_F2].pfltForCoeffs = S4_F2_ForwardCoeffs;
+    iir_filters_table[IIR_S5][IIR_F2].numRevCoeffs = sizeof(S4_F2_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S5][IIR_F2].numForCoeffs = sizeof(S4_F2_ForwardCoeffs)/ sizeof(float);    
+
+    iir_filters_table[IIR_S5][IIR_S5].pfltRevCoeffs = S4_F5_ReverseCoeffs;
+    iir_filters_table[IIR_S5][IIR_S5].pfltForCoeffs = S4_F5_ForwardCoeffs;
+    iir_filters_table[IIR_S5][IIR_S5].numRevCoeffs = sizeof(S4_F5_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S5][IIR_S5].numForCoeffs = sizeof(S4_F5_ForwardCoeffs)/ sizeof(float);
+
+    iir_filters_table[IIR_S5][IIR_F10].pfltRevCoeffs = S4_F10_ReverseCoeffs;
+    iir_filters_table[IIR_S5][IIR_F10].pfltForCoeffs = S4_F10_ForwardCoeffs;
+    iir_filters_table[IIR_S5][IIR_F10].numRevCoeffs = sizeof(S4_F10_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S5][IIR_F10].numForCoeffs = sizeof(S4_F10_ForwardCoeffs)/ sizeof(float);
+
+    iir_filters_table[IIR_S5][IIR_F20].pfltRevCoeffs = S4_F20_ReverseCoeffs;
+    iir_filters_table[IIR_S5][IIR_F20].pfltForCoeffs = S4_F20_ForwardCoeffs;
+    iir_filters_table[IIR_S5][IIR_F20].numRevCoeffs = sizeof(S4_F20_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S5][IIR_F20].numForCoeffs = sizeof(S4_F20_ForwardCoeffs)/ sizeof(float);
+
+    iir_filters_table[IIR_S5][IIR_F50].pfltRevCoeffs = S4_F50_ReverseCoeffs;
+    iir_filters_table[IIR_S5][IIR_F50].pfltForCoeffs = S4_F50_ForwardCoeffs;
+    iir_filters_table[IIR_S5][IIR_F50].numRevCoeffs = sizeof(S4_F50_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S5][IIR_F50].numForCoeffs = sizeof(S4_F50_ForwardCoeffs)/ sizeof(float);
+
+    iir_filters_table[IIR_S5][IIR_F100].pfltRevCoeffs = S4_F100_ReverseCoeffs;
+    iir_filters_table[IIR_S5][IIR_F100].pfltForCoeffs = S4_F100_ForwardCoeffs;
+    iir_filters_table[IIR_S5][IIR_F100].numRevCoeffs = sizeof(S4_F100_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S5][IIR_F100].numForCoeffs = sizeof(S4_F100_ForwardCoeffs)/ sizeof(float);
+    ///5120
+    iir_filters_table[IIR_S6][IIR_F016].pfltRevCoeffs = S5_F016_ReverseCoeffs;
+    iir_filters_table[IIR_S6][IIR_F016].pfltForCoeffs = S5_F016_ForwardCoeffs;
+    iir_filters_table[IIR_S6][IIR_F016].numRevCoeffs = sizeof(S5_F016_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S6][IIR_F016].numForCoeffs = sizeof(S5_F016_ForwardCoeffs)/ sizeof(float);
+
+    iir_filters_table[IIR_S6][IIR_F1].pfltRevCoeffs = S5_F1_ReverseCoeffs;
+    iir_filters_table[IIR_S6][IIR_F1].pfltForCoeffs = S5_F1_ForwardCoeffs;
+    iir_filters_table[IIR_S6][IIR_F1].numRevCoeffs = sizeof(S5_F1_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S6][IIR_F1].numForCoeffs = sizeof(S5_F1_ForwardCoeffs)/ sizeof(float);
+
+    iir_filters_table[IIR_S6][IIR_F2].pfltRevCoeffs = S5_F2_ReverseCoeffs;
+    iir_filters_table[IIR_S6][IIR_F2].pfltForCoeffs = S5_F2_ForwardCoeffs;
+    iir_filters_table[IIR_S6][IIR_F2].numRevCoeffs = sizeof(S5_F2_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S6][IIR_F2].numForCoeffs = sizeof(S5_F2_ForwardCoeffs)/ sizeof(float);    
+
+    iir_filters_table[IIR_S6][IIR_S6].pfltRevCoeffs = S5_F5_ReverseCoeffs;
+    iir_filters_table[IIR_S6][IIR_S6].pfltForCoeffs = S5_F5_ForwardCoeffs;
+    iir_filters_table[IIR_S6][IIR_S6].numRevCoeffs = sizeof(S5_F5_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S6][IIR_S6].numForCoeffs = sizeof(S5_F5_ForwardCoeffs)/ sizeof(float);
+
+    iir_filters_table[IIR_S6][IIR_F10].pfltRevCoeffs = S5_F10_ReverseCoeffs;
+    iir_filters_table[IIR_S6][IIR_F10].pfltForCoeffs = S5_F10_ForwardCoeffs;
+    iir_filters_table[IIR_S6][IIR_F10].numRevCoeffs = sizeof(S5_F10_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S6][IIR_F10].numForCoeffs = sizeof(S5_F10_ForwardCoeffs)/ sizeof(float);
+
+    iir_filters_table[IIR_S6][IIR_F20].pfltRevCoeffs = S5_F20_ReverseCoeffs;
+    iir_filters_table[IIR_S6][IIR_F20].pfltForCoeffs = S5_F20_ForwardCoeffs;
+    iir_filters_table[IIR_S6][IIR_F20].numRevCoeffs = sizeof(S5_F20_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S6][IIR_F20].numForCoeffs = sizeof(S5_F20_ForwardCoeffs)/ sizeof(float);
+
+    iir_filters_table[IIR_S6][IIR_F50].pfltRevCoeffs = S5_F50_ReverseCoeffs;
+    iir_filters_table[IIR_S6][IIR_F50].pfltForCoeffs = S5_F50_ForwardCoeffs;
+    iir_filters_table[IIR_S6][IIR_F50].numRevCoeffs = sizeof(S5_F50_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S6][IIR_F50].numForCoeffs = sizeof(S5_F50_ForwardCoeffs)/ sizeof(float);
+
+    iir_filters_table[IIR_S6][IIR_F100].pfltRevCoeffs = S5_F100_ReverseCoeffs;
+    iir_filters_table[IIR_S6][IIR_F100].pfltForCoeffs = S5_F100_ForwardCoeffs;
+    iir_filters_table[IIR_S6][IIR_F100].numRevCoeffs = sizeof(S5_F100_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S6][IIR_F100].numForCoeffs = sizeof(S5_F100_ForwardCoeffs)/ sizeof(float);
+    ///2560
+    iir_filters_table[IIR_S7][IIR_F016].pfltRevCoeffs = S6_F016_ReverseCoeffs;
+    iir_filters_table[IIR_S7][IIR_F016].pfltForCoeffs = S6_F016_ForwardCoeffs;
+    iir_filters_table[IIR_S7][IIR_F016].numRevCoeffs = sizeof(S6_F016_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S7][IIR_F016].numForCoeffs = sizeof(S6_F016_ForwardCoeffs)/ sizeof(float);
+
+    iir_filters_table[IIR_S7][IIR_F1].pfltRevCoeffs = S6_F1_ReverseCoeffs;
+    iir_filters_table[IIR_S7][IIR_F1].pfltForCoeffs = S6_F1_ForwardCoeffs;
+    iir_filters_table[IIR_S7][IIR_F1].numRevCoeffs = sizeof(S6_F1_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S7][IIR_F1].numForCoeffs = sizeof(S6_F1_ForwardCoeffs)/ sizeof(float);
+
+    iir_filters_table[IIR_S7][IIR_F2].pfltRevCoeffs = S6_F2_ReverseCoeffs;
+    iir_filters_table[IIR_S7][IIR_F2].pfltForCoeffs = S6_F2_ForwardCoeffs;
+    iir_filters_table[IIR_S7][IIR_F2].numRevCoeffs = sizeof(S6_F2_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S7][IIR_F2].numForCoeffs = sizeof(S6_F2_ForwardCoeffs)/ sizeof(float);    
+
+    iir_filters_table[IIR_S7][IIR_S7].pfltRevCoeffs = S6_F5_ReverseCoeffs;
+    iir_filters_table[IIR_S7][IIR_S7].pfltForCoeffs = S6_F5_ForwardCoeffs;
+    iir_filters_table[IIR_S7][IIR_S7].numRevCoeffs = sizeof(S6_F5_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S7][IIR_S7].numForCoeffs = sizeof(S6_F5_ForwardCoeffs)/ sizeof(float);
+
+    iir_filters_table[IIR_S7][IIR_F10].pfltRevCoeffs = S6_F10_ReverseCoeffs;
+    iir_filters_table[IIR_S7][IIR_F10].pfltForCoeffs = S6_F10_ForwardCoeffs;
+    iir_filters_table[IIR_S7][IIR_F10].numRevCoeffs = sizeof(S6_F10_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S7][IIR_F10].numForCoeffs = sizeof(S6_F10_ForwardCoeffs)/ sizeof(float);
+
+    iir_filters_table[IIR_S7][IIR_F20].pfltRevCoeffs = S6_F20_ReverseCoeffs;
+    iir_filters_table[IIR_S7][IIR_F20].pfltForCoeffs = S6_F20_ForwardCoeffs;
+    iir_filters_table[IIR_S7][IIR_F20].numRevCoeffs = sizeof(S6_F20_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S7][IIR_F20].numForCoeffs = sizeof(S6_F20_ForwardCoeffs)/ sizeof(float);
+
+    iir_filters_table[IIR_S7][IIR_F50].pfltRevCoeffs = S6_F50_ReverseCoeffs;
+    iir_filters_table[IIR_S7][IIR_F50].pfltForCoeffs = S6_F50_ForwardCoeffs;
+    iir_filters_table[IIR_S7][IIR_F50].numRevCoeffs = sizeof(S6_F50_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S7][IIR_F50].numForCoeffs = sizeof(S6_F50_ForwardCoeffs)/ sizeof(float);
+
+    iir_filters_table[IIR_S7][IIR_F100].pfltRevCoeffs = S6_F100_ReverseCoeffs;
+    iir_filters_table[IIR_S7][IIR_F100].pfltForCoeffs = S6_F100_ForwardCoeffs;
+    iir_filters_table[IIR_S7][IIR_F100].numRevCoeffs = sizeof(S6_F100_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S7][IIR_F100].numForCoeffs = sizeof(S6_F100_ForwardCoeffs)/ sizeof(float);
+    ///1280
+    iir_filters_table[IIR_S8][IIR_F016].pfltRevCoeffs = S7_F016_ReverseCoeffs;
+    iir_filters_table[IIR_S8][IIR_F016].pfltForCoeffs = S7_F016_ForwardCoeffs;
+    iir_filters_table[IIR_S8][IIR_F016].numRevCoeffs = sizeof(S7_F016_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S8][IIR_F016].numForCoeffs = sizeof(S7_F016_ForwardCoeffs)/ sizeof(float);
+    
+    iir_filters_table[IIR_S8][IIR_F1].pfltRevCoeffs = S7_F1_ReverseCoeffs;
+    iir_filters_table[IIR_S8][IIR_F1].pfltForCoeffs = S7_F1_ForwardCoeffs;
+    iir_filters_table[IIR_S8][IIR_F1].numRevCoeffs = sizeof(S7_F1_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S8][IIR_F1].numForCoeffs = sizeof(S7_F1_ForwardCoeffs)/ sizeof(float);
+    
+    iir_filters_table[IIR_S8][IIR_F2].pfltRevCoeffs = S7_F2_ReverseCoeffs;
+    iir_filters_table[IIR_S8][IIR_F2].pfltForCoeffs = S7_F2_ForwardCoeffs;
+    iir_filters_table[IIR_S8][IIR_F2].numRevCoeffs = sizeof(S7_F2_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S8][IIR_F2].numForCoeffs = sizeof(S7_F2_ForwardCoeffs)/ sizeof(float);    
+
+    iir_filters_table[IIR_S8][IIR_S5].pfltRevCoeffs = S7_F5_ReverseCoeffs;
+    iir_filters_table[IIR_S8][IIR_S5].pfltForCoeffs = S7_F5_ForwardCoeffs;
+    iir_filters_table[IIR_S8][IIR_S5].numRevCoeffs = sizeof(S7_F5_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S8][IIR_S5].numForCoeffs = sizeof(S7_F5_ForwardCoeffs)/ sizeof(float);
+    
+    iir_filters_table[IIR_S8][IIR_F10].pfltRevCoeffs = S7_F10_ReverseCoeffs;
+    iir_filters_table[IIR_S8][IIR_F10].pfltForCoeffs = S7_F10_ForwardCoeffs;
+    iir_filters_table[IIR_S8][IIR_F10].numRevCoeffs = sizeof(S7_F10_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S8][IIR_F10].numForCoeffs = sizeof(S7_F10_ForwardCoeffs)/ sizeof(float);
+    
+    iir_filters_table[IIR_S8][IIR_F20].pfltRevCoeffs = S7_F20_ReverseCoeffs;
+    iir_filters_table[IIR_S8][IIR_F20].pfltForCoeffs = S7_F20_ForwardCoeffs;
+    iir_filters_table[IIR_S8][IIR_F20].numRevCoeffs = sizeof(S7_F20_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S8][IIR_F20].numForCoeffs = sizeof(S7_F20_ForwardCoeffs)/ sizeof(float);
+    
+    iir_filters_table[IIR_S8][IIR_F50].pfltRevCoeffs = S7_F50_ReverseCoeffs;
+    iir_filters_table[IIR_S8][IIR_F50].pfltForCoeffs = S7_F50_ForwardCoeffs;
+    iir_filters_table[IIR_S8][IIR_F50].numRevCoeffs = sizeof(S7_F50_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S8][IIR_F50].numForCoeffs = sizeof(S7_F50_ForwardCoeffs)/ sizeof(float);
+    
+    iir_filters_table[IIR_S8][IIR_F100].pfltRevCoeffs = S7_F100_ReverseCoeffs;
+    iir_filters_table[IIR_S8][IIR_F100].pfltForCoeffs = S7_F100_ForwardCoeffs;
+    iir_filters_table[IIR_S8][IIR_F100].numRevCoeffs = sizeof(S7_F100_ReverseCoeffs)/ sizeof(float);
+    iir_filters_table[IIR_S8][IIR_F100].numForCoeffs = sizeof(S7_F100_ForwardCoeffs)/ sizeof(float);
 }
 
 /**************************************************************************************
@@ -561,7 +790,9 @@ static void cascade_iir_filter(float*   data,
         int double_loop = loop<<1;
         a[1] = rev_coeffs[double_loop];
         a[2] = rev_coeffs[1+double_loop];
-
+        LOGD("b[0] = %E, b[1] = %E, b[2] = %E, a[1] = %E, a[2] = %E",  b[0],b[1],b[2],a[1],a[2]);
+		//正向系数023，反向系数01
+		//正向系数345，反射系数23
         for(index = 0; index < len; index++)
         {
             m     = loop*3;
@@ -660,7 +891,7 @@ void integrate_o2(float* data,  int len)//,  float alpha, float gamma, float bet
 /* 功能描述：IIR高通滤波入口函数 */
 void  enter_iir_filter(float *src_data, int length,  int up_freq,  int lw_freq)
 {
-    //LOGD("xin：enter_iir_filter_length = %d,  up_freq = %d,  lw_freq = %d", length, up_freq, lw_freq);
+    LOGD("xin：enter_iir_filter_length = %d,  up_freq = %d,  lw_freq = %d", length, up_freq, lw_freq);
 	int i=0;
     if(src_data == NULL)
     {

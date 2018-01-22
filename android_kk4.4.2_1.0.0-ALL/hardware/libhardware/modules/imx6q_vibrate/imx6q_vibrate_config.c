@@ -1,29 +1,16 @@
 ﻿#include <stdio.h>
 #include <stdlib.h>
-#include <assert.h>
-#include <malloc.h>
 #include <unistd.h>
-#include <signal.h>
-#include <math.h>
 #include <stdbool.h>
-#include <string.h>
 #include <hardware/log.h>
-#include <cutils/log.h>
 #include <hardware/math.h>
-#include <sys/ioctl.h>
-#include <sys/types.h>
-#include <fcntl.h>
-#include <pthread.h>
 #include <hardware/gpio.h>
-#include <hardware/log.h>
 #include <hardware/masterspi.h>
-#include <hardware/slavespi.h>
-#include <hardware/spidev.h>
-
 #include <sys/timeb.h>
 #include <time.h>
-
 #include <hardware/imx6q_vibrate_config.h>
+#include <hardware/imx6q_spi_vibrate.h>
+#include <hardware/imx6q_common_config.h>
 
 #define   SMP_RATE_102400     102400   //除以2.56 =40K
 #define   SMP_RATE_51200      51200    //20K
@@ -35,56 +22,60 @@
 #define   SMP_RATE_2560       2560     //1K
 #define   SMP_RATE_1280       1280     //0.5K
 
-enum {
-    HighSpeed, HighPrecision, LowPower, LowSpeed
+typedef enum{
+    HighSpeed = 0, //高速
+    HighPrecision, //高精度
+    LowPower,      //低功耗
+    LowSpeed       //低速
 }ADCModeEnum;//ADC_MODE模式
 
-enum {
-    DefaultClk, DefaultHalf, DefaultFourth, DefaultEighth
+typedef enum{
+    DefaultClk = 0, //26.2144MHZ
+    DefaultHalf,    //26.2144MHZ/2
+    DefaultFourth,  //26.2144MHZ/4
+    DefaultEighth   //26.2144MHZ/8
 }ADCClkEnum;//ADC_CLK 时钟速率
 
-enum  {
-    AC, DC
+typedef enum{
+    AC = 0, 
+    DC
 }CoupleModeEnum;//耦合方式
 
-enum  {
-    CURRENT, VOLTAGE
+typedef enum{
+    VOLTAGE = 0,   //电压采集
+    CURRENT        //电流采集
 }SampleTypeEnum;//采集类型
 
-enum  {
-    V25, V2P5, V0P25, VAUTO
+typedef enum{
+    V25 = 0,  //25V
+    V2P5,     //2.5V
+    V0P25,    //0.25V
+    VAUTO     //自动量程
 }VoltageWindowEnum; //量程选择
 
-enum  {
-    SPEED,
-	SHIFT
+typedef enum{
+	SHIFT = 0, //位移积分
+    SPEED      //速度积分
 }IntegrateTypeEnum;//积分选择
 
-enum {
-	AnalogFallingCount, AnalogRisingCount
+typedef enum{
+	AnalogFallingCount = 0, //下降沿触发计数器
+	AnalogRisingCount       //上升沿触发计数器
 }SpeedTrigerEnum; //转速触发计数器
 
-enum  {
-    CHA, CHB, CHR
+typedef enum{
+    CHA = 0,  //采集通道1
+    CHB,      //采集通道2
+    CHR       //转速通道
 }CHEnum;//通道选择
 
-enum {
-    Manual, RTriger, AnalogRising, AnalogFalling
+typedef enum{
+    Manual = 0,   //手动触发
+    RTriger,      //转速触发
+    AnalogRising, //模拟上升沿触发
+    AnalogFalling //模拟下降沿触发
 }TrigerEnum; //模拟触发方式
 
-enum {
-	PresureSample, SingleChSample, DoubleChSample, RotationSample
-}AnalyTypeEnum; //设备分析类型
-
-struct  main_fpga_reg
-{
- 	float adc_clk ;
-	float rotation_resis_value;
-	float trig_value;
-	bool adc_work_status;
-	bool rotat_sample_status;
-	int  fifo_byte;
-};
 
 /////////////////Ctrl_REG  0x0000
 void enable_rotation(bool flag)//使能转速通道 OK
@@ -122,7 +113,7 @@ int  enable_CH_A(bool flag)//使能震动CHA OK
 	return data;
 }
 
-void enable_CH_A_integrate(bool flag)//使能CHA的硬件积分 OK
+int enable_CH_A_integrate(bool flag)//使能CHA的硬件积分 OK
 {
 	LOGD("xin:===enable_CH_A_integrate");
 	unsigned int data = sread(0);
@@ -136,6 +127,7 @@ void enable_CH_A_integrate(bool flag)//使能CHA的硬件积分 OK
 	}
 	swrite(0, data);
 	//sread(0);
+	return data;
 }
 
 int enable_CH_B(bool flag)//使能震动CHB OK
@@ -346,10 +338,10 @@ void set_couple_mode(int ch, int coupleMode)//设置每个通道对应的耦合�
 	data=sread(reg_addr);
 	switch(coupleMode)
 	{
-		case AC:
+		case AC:  // 0
 			data &=(~((unsigned int)(0x1)));
 			break;
-		case DC:
+		case DC:  // 1
 			data |=0x1;
 			break;
 		 default:break;
@@ -398,10 +390,10 @@ void set_sample_type(int ch, int sampleType)//设置采集类型  OK
 	data=sread(reg_addr);
 	switch(sampleType)
 	{
-		case CURRENT://电流
+		case CURRENT://电流1
 			data |=0x2;
 			break;
-		case VOLTAGE://电压
+		case VOLTAGE://电压0
 			data &=(~((unsigned int)(0x2)));
 			break;
 		 default:break;
@@ -426,10 +418,10 @@ int get_sample_type(int ch)//得到采集类型 OK
 	}
 	data=sread(reg_addr);
 	data &=0x2;
-	if(data==0x0)
-		return VOLTAGE; //电压
+	if(data == 0x0)
+		return VOLTAGE; //电压0
 	else
-		return CURRENT; //电流
+		return CURRENT; //电流1
 }
 
 void set_24V(int ch, bool flag)//设置24v电源的开关 OK
@@ -454,7 +446,7 @@ void set_24V(int ch, bool flag)//设置24v电源的开关 OK
 	else
 		data &=(~((unsigned int)(0x4)));
 	swrite(reg_addr, data);
-	//sread(reg_addr);
+	sread(reg_addr);
 }
 
 bool get_24V(int ch)//得到24v电源的开关状态  OK
@@ -514,7 +506,7 @@ void set_voltage_range(int ch, int voltageRange)//设置电压量程 OK
 		 default:break;
 	}
 	swrite(reg_addr, data);
-	//sread(reg_addr);
+	sread(reg_addr);
 }
 
 void set_adc_clk(int adcClk)
@@ -650,7 +642,7 @@ int get_voltage_range(int ch)//得到电压量程 OK
 
 void set_integrate(int ch, int integrateType)//设置积分选择 OK
 {
-	//LOGD("xin:===set_integrate");
+	LOGD("xin:===set_integrate");
 	unsigned int data = 0;
 	unsigned int reg_addr =0;
 	switch(ch)
@@ -666,16 +658,17 @@ void set_integrate(int ch, int integrateType)//设置积分选择 OK
 	data=sread(reg_addr);
 	switch(integrateType)
 	{
-		case SPEED:
+		case SPEED: // 1
 			data |=(0x1<<6);
 			break;
-		case SHIFT:
+		case SHIFT: // 0
 		    data &=(~((unsigned int)(0x1<<6)));
 			break;
 		default:break;
 	}
+
 	swrite(reg_addr, data);
-	//sread(reg_addr);
+	sread(reg_addr);
 }
 
 int get_integrate(int ch)//得到积分选择 OK
@@ -699,10 +692,10 @@ int get_integrate(int ch)//得到积分选择 OK
 	switch(data)
 	{
 		case 0:
-			integ_type= SHIFT;
+			integ_type= SHIFT; //0
 			break;
 		case 1:
-			integ_type= SPEED;
+			integ_type= SPEED; // 1
 			break;
 		default:break;
 	}
@@ -898,12 +891,16 @@ int get_analog_fifo_byte()//得到模拟fifo中的字节数 0K
 void poweron_spi()//SPI POWER ON
 {
 	//LOGD("xin:===poweron_spi设备上电开始");
-	GpioOpen();
-	GpioSet(FPGA_3V3_CTR, GPIO_SET_ON);
-	GpioSet(FPGA_1V2_CTR, GPIO_SET_ON);
-	GpioSet(FPGA_2V5_CTR, GPIO_SET_ON);
-	usleep(130000);
-    LOGD("xin:===poweron_spi设备上电结束");
+	if(GpioOpen()< 0)
+    {
+        LOGD("xin:===poweron_spi设备上电异常");
+    }else{
+        GpioSet(FPGA_3V3_CTR, GPIO_SET_ON);
+        GpioSet(FPGA_1V2_CTR, GPIO_SET_ON);
+        GpioSet(FPGA_2V5_CTR, GPIO_SET_ON);
+        usleep(130000);
+        LOGD("xin:===poweron_spi设备上电正常");
+    }  
 }
 
 void poweroff_spi()//SPI POWER OFF
@@ -917,106 +914,234 @@ void poweroff_spi()//SPI POWER OFF
 
 void reset_fpga_reg() //复位FPGA的寄存器
 {
-	//LOGD("xin:===reset_fpga_reg");
+    LOGD("xin:===reset_fpga_reg ==start");
 	swrite(ResetFpgaRegAddr, ResetFpgaRegData);
 	usleep(50000);
+    swrite(0,0);
+    swrite(0x04,0);
+    swrite(0x08,0);
+    swrite(0x0c,0);
+    swrite(0x10,0);
+    swrite(0x14,0);
+    swrite(0x44,0);
+    swrite(0x48,0);   
+    LOGD("xin:===reset_fpga_reg ==end");
 }
 
-
-int set_singleCH_vibrate_reg( int signalType , float maxFreq ,  float minFreq, int test_mode) //设置振动采集寄存器，单通道振动默认CHB
+int set_singleCH_vibrate_reg(int ch, int signalType, float maxFreq, float minFreq, int version_mode, int rangeMode) //设置振动采集寄存器，单通道振动默认CHB
 {
-	LOGD("xin:=== set_singleCH_vibrate_reg==========start");
-	//poweron_spi();
-	//usleep(130000);
-
-	if(masterspi_open() == -1)
-	{
-        return -1;
-	}
-
+	LOGD("xin:=== set_singleCH_vibrate_reg==========start [%s]", log_time());
 	reset_fpga_reg(); //复位寄存器
-    if ((sread(0) == -1) || (sread(0x8) == -1))
-    {
-        return -1;
-    }
 
-	if(signalType == 0) //0：加速度，1：速度，2：位移
+    if(ch == CH_B)
 	{
-	    //LOGD("xin:=== signalType == 0, ACC");
-	    if (enable_CH_B(true) == -1)//使能CHA
-        {
-            return -1;
-        }
+		if ((sread(0) == -1) || (sread(0x8) == -1))
+	    {
+	        return -1;
+	    }
 
-        if(minFreq < 7) //小于7Hz以下建议用DC耦合，大于等于7HZ 用AC耦合
+		if(signalType == ACC_TYPE) //0：加速度，1：速度，2：位移
 		{
-			//LOGD("xin:=== minFreq <7HZ, DC");
-			set_couple_mode(CHB, DC);//耦合方式DC
-		}else{
-			//LOGD("xin:=== minFreq >7HZ, AC");
-			//set_couple_mode(CHB, AC);//耦合方式 , 默认AC
-		}
-	}else if(signalType == 1) //速度
-	{
-	    //LOGD("xin:=== signalType == 1, SPEED");
-        if(enable_CH_B_integrate(true)== -1)//使能CHB的积分
-        {
-            return -1;
-        }
+		    LOGD("xin:=== signalType == 0, ACC");
+		    if (enable_CH_B(true) == -1)//使能CHA
+	        {
+	            return -1;
+	        }
 
-		set_integrate(CHB, SPEED);//设置积分选择, 速度
-		if(minFreq < 10) //小于10Hz以下建议用DC耦合，大于等于10HZ 用AC耦合
-		{
-			//LOGD("xin:=== minFreq <10HZ, DC");
-			set_couple_mode(CHB, DC);//耦合方式DC
-		}else{
-			//LOGD("xin:=== minFreq >10HZ, AC");
-			//set_couple_mode(CHB, AC);//耦合方式 , 默认AC
-		}
-	}else if(signalType == 2) //位移
-	{
-		//LOGD("xin:=== signalType == 2, SHIFT");
-        if(enable_CH_B_integrate(true) == -1) //使能CHB的积分
-        {
-            return -1;
-        }
+	        if(minFreq < FREQ_7) //小于7Hz以下建议用DC耦合，大于等于7HZ 用AC耦合
+			{
+				LOGD("xin:=== minFreq <7HZ, DC");
+				set_couple_mode(CHB, DC);//耦合方式DC
+                set_voltage_range(CHB, V25);//设置电压量程, 默认V25, 可选有V25, V2P5, V0P25
+			}else{
+				LOGD("xin:=== minFreq >=7HZ, AC");
+				//set_couple_mode(CHB, AC);//耦合方式 , 默认AC
+                if(rangeMode == VOL_RANGE_V25)
+                    set_voltage_range(CHB, V25);//设置电压量程, 默认V25, 可选有V25, V2P5, V0P25
+                else if (rangeMode == VOL_RANGE_V2P5)
+                    set_voltage_range(CHB, V2P5);
+                else if (rangeMode == VOL_RANGE_V0P25)
+                    set_voltage_range(CHB, V0P25);
+			}
 
-		//set_integrate(CHB, SHIFT);//设置积分选择, 默认为位移
-		if(minFreq < 10) //小于10Hz以下建议用DC耦合，大于等于10HZ 用AC耦合
+		}else if(signalType == VEL_TYPE) //速度
 		{
-			//LOGD("xin:=== minFreq <10HZ, DC");
-			set_couple_mode(CHB, DC);//耦合方式DC
-		}else{
-			//LOGD("xin:=== minFreq >10HZ, AC");
-			//set_couple_mode(CHB, AC);//耦合方式 , 默认AC
+		    LOGD("xin:=== signalType == 1, SPEED");
+	        if(enable_CH_B_integrate(true)== -1)//使能CHB的积分
+	        {
+	            return -1;
+	        }
+
+			set_integrate(CHB, SPEED);//设置积分选择, 速度
+			if(minFreq < FREQ_10) //小于10Hz以下建议用DC耦合，大于等于10HZ 用AC耦合
+			{
+				LOGD("xin:=== minFreq <10HZ, DC");
+				set_couple_mode(CHB, DC);//耦合方式DC
+                set_voltage_range(CHB, V25);//设置电压量程, 默认V25, 可选有V25, V2P5, V0P25
+			}else{
+				LOGD("xin:=== minFreq >=10HZ, AC");
+				//set_couple_mode(CHB, AC);//耦合方式 , 默认AC
+                if(rangeMode == VOL_RANGE_V25)
+                    set_voltage_range(CHB, V25);//设置电压量程, 默认V25, 可选有V25, V2P5, V0P25
+                else if (rangeMode == VOL_RANGE_V2P5)
+                    set_voltage_range(CHB, V2P5);
+                else if (rangeMode == VOL_RANGE_V0P25)
+                    set_voltage_range(CHB, V0P25);
+			}
+		}else if(signalType == DSP_TYPE) //位移
+		{
+			LOGD("xin:=== signalType == 2, SHIFT");
+	        if(enable_CH_B_integrate(true) == -1) //使能CHB的积分
+	        {
+	            return -1;
+	        }
+
+			//set_integrate(CHB, SHIFT);//设置积分选择, 默认为位移
+			if(minFreq < FREQ_10) //小于10Hz以下建议用DC耦合，大于等于10HZ 用AC耦合
+			{
+				LOGD("xin:=== minFreq <10HZ, DC");
+				set_couple_mode(CHB, DC);//耦合方式DC
+                set_voltage_range(CHB, V25);//设置电压量程, 默认V25, 可选有V25, V2P5, V0P25
+			}else{
+				LOGD("xin:=== minFreq >=10HZ, AC");
+				//set_couple_mode(CHB, AC);//耦合方式 , 默认AC
+                if(rangeMode == VOL_RANGE_V25)
+                    set_voltage_range(CHB, V25);//设置电压量程, 默认V25, 可选有V25, V2P5, V0P25
+                else if (rangeMode == VOL_RANGE_V2P5)
+                    set_voltage_range(CHB, V2P5);
+                else if (rangeMode == VOL_RANGE_V0P25)
+                    set_voltage_range(CHB, V0P25);
+			}
 		}
+
+		if ((sread(0) == -1) || (sread(0x8) == -1))
+	    {
+	        return -1;
+	    }
+		set_sample_rate((int)maxFreq*2.56); //设置采样频率（包括设置ADC CLK，ADC_MODE）
+	    if ((sread(0) == -1) || (sread(0x8) == -1))
+	    {
+	        return -1;
+	    }
+
+	    if (version_mode == TEST_MODE)  ////如果为1表示内部  测试版本
+	    {
+	        LOGD("xin:=== version_mode = 1 表示测试版本，无24V激励");
+	         //set_24V(CHB, true);//设置24v电源的开关激励, 默认不开启，最终版本是要设为 true
+	    }else{//正式版本为0，最终版本要打开,且adc数据提取要特别处理
+	        LOGD("xin:=== version_mode = 0 表示正式版本，有24V激励");
+	        set_24V(CHB, true);//设置24v电源的开关激励, 默认不开启，最终版本是要设为 true
+	    }	    
+
+	    sread(0);
+		sread(0x8);
 	}
 
-	if ((sread(0) == -1) || (sread(0x8) == -1))
-    {
-        return -1;
-    }
-	set_sample_rate((int)maxFreq*2.56); //设置采样频率（包括设置ADC CLK，ADC_MODE）
-    if ((sread(0) == -1) || (sread(0x8) == -1))
-    {
-        return -1;
-    }
+	if(ch == CH_A)
+	{
+		if ((sread(0) == -1) || (sread(0x4) == -1))
+	    {
+	        return -1;
+	    }
 
-    if (test_mode == 1)  ////如果为1表示内部  测试版本
-    {
-        LOGD("xin:=== test_mode = 1 表示测试版本，无24V激励");
-         //set_24V(CHB, true);//设置24v电源的开关激励, 默认不开启，最终版本是要设为 true
-    }else{//正式版本为0，最终版本要打开,且adc数据提取要特别处理
-        LOGD("xin:=== test_mode = 0 表示正式版本，有24V激励");
-        set_24V(CHB, true);//设置24v电源的开关激励, 默认不开启，最终版本是要设为 true
-    }
-	set_voltage_range(CHB, V25);//设置电压量程, 默认V25, 可选有V25, V2P5, V0P25
+		if(signalType == ACC_TYPE) //0：加速度，1：速度，2：位移
+		{
+		    LOGD("xin:=== signalType == 0, ACC");
+		    if (enable_CH_A(true) == -1)//使能CHA
+	        {
+	            return -1;
+	        }
 
-	//set_triger_mode(Manual); //设置开始采集的触发方式, Manual, RTriger, AnalogRising, AnalogFalling
+	        if(minFreq < FREQ_7) //小于7Hz以下建议用DC耦合，大于等于7HZ 用AC耦合
+			{
+				LOGD("xin:=== minFreq <7HZ, DC");
+				set_couple_mode(CHA, DC);//耦合方式DC
+                set_voltage_range(CHA, V25);
+			}else{
+				LOGD("xin:=== minFreq >=7HZ, AC");
+				//set_couple_mode(CHA, AC);//耦合方式 , 默认AC
+                if(rangeMode == VOL_RANGE_V25)
+                    set_voltage_range(CHA, V25);//设置电压量程, 默认V25, 可选有V25, V2P5, V0P25
+                else if (rangeMode == VOL_RANGE_V2P5)
+                    set_voltage_range(CHA, V2P5);
+                else if (rangeMode == VOL_RANGE_V0P25)
+                    set_voltage_range(CHA, V0P25);
+			}
 
-	sread(0);
-	sread(0x8);
-    LOGD("xin:=== set_singleCH_vibrate_reg==========end");
+		}else if(signalType == VEL_TYPE) //速度
+		{
+		    LOGD("xin:=== signalType == 1, SPEED");
+	        if(enable_CH_A_integrate(true)== -1)//使能CHB的积分
+	        {
+	            return -1;
+	        }
+
+			set_integrate(CHA, SPEED);//设置积分选择, 速度
+			if(minFreq < FREQ_10) //小于10Hz以下建议用DC耦合，大于等于10HZ 用AC耦合
+			{
+				LOGD("xin:=== minFreq <10HZ, DC");
+				set_couple_mode(CHA, DC);//耦合方式DC
+                set_voltage_range(CHA, V25);
+			}else{
+				LOGD("xin:=== minFreq >=10HZ, AC");
+				//set_couple_mode(CHA, AC);//耦合方式 , 默认AC
+                if(rangeMode == VOL_RANGE_V25)
+                    set_voltage_range(CHA, V25);//设置电压量程, 默认V25, 可选有V25, V2P5, V0P25
+                else if (rangeMode == VOL_RANGE_V2P5)
+                    set_voltage_range(CHA, V2P5);
+                else if (rangeMode == VOL_RANGE_V0P25)
+                    set_voltage_range(CHA, V0P25);
+			}
+		}else if(signalType == DSP_TYPE) //位移
+		{
+			LOGD("xin:=== signalType == 2, SHIFT");
+	        if(enable_CH_A_integrate(true) == -1) //使能CHB的积分
+	        {
+	            return -1;
+	        }
+
+			//set_integrate(CHA, SHIFT);//设置积分选择, 默认为位移
+			if(minFreq < FREQ_10) //小于10Hz以下建议用DC耦合，大于等于10HZ 用AC耦合
+			{
+				LOGD("xin:=== minFreq <10HZ, DC");
+				set_couple_mode(CHA, DC);//耦合方式DC
+                set_voltage_range(CHA, V25);
+			}else{
+				LOGD("xin:=== minFreq >=10HZ, AC");
+				//set_couple_mode(CHA, AC);//耦合方式 , 默认AC
+                if(rangeMode == VOL_RANGE_V25)
+                    set_voltage_range(CHA, V25);//设置电压量程, 默认V25, 可选有V25, V2P5, V0P25
+                else if (rangeMode == VOL_RANGE_V2P5)
+                    set_voltage_range(CHA, V2P5);
+                else if (rangeMode == VOL_RANGE_V0P25)
+                    set_voltage_range(CHA, V0P25);
+			}
+		}
+
+		if ((sread(0) == -1) || (sread(0x4) == -1))
+	    {
+	        return -1;
+	    }
+		set_sample_rate((int)maxFreq*2.56); //设置采样频率（包括设置ADC CLK，ADC_MODE）
+	    if ((sread(0) == -1) || (sread(0x4) == -1))
+	    {
+	        return -1;
+	    }
+
+	    if (version_mode == TEST_MODE)  ////如果为1表示内部  测试版本
+	    {
+	        LOGD("xin:=== version_mode = 1 表示测试版本，无24V激励");
+	         //set_24V(CHA, true);//设置24v电源的开关激励, 默认不开启，最终版本是要设为 true
+	    }else{//正式版本为0，最终版本要打开,且adc数据提取要特别处理
+	        LOGD("xin:=== version_mode = 0 表示正式版本，有24V激励");
+	        set_24V(CHA, true);//设置24v电源的开关激励, 默认不开启，最终版本是要设为 true
+	    }
+
+	    sread(0);
+		sread(0x4);
+	}
+		
+    LOGD("xin:=== set_singleCH_vibrate_reg==========end [%s]", log_time());
 	return 0;
 }
 

@@ -25,6 +25,7 @@
 
 namespace android {
 
+
 /*
  * Implements:
  *  native int part1(int intArg, double doubleArg, String stringArg,

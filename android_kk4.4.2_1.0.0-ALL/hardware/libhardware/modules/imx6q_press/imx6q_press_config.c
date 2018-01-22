@@ -903,13 +903,17 @@ int spi_freq(  )  // 采集板采集频率
 
 void poweron_spi(  )//SPI POWER ON
 {
-	//LOGD( "xin:===poweron_spi设备上电开始" );
-	GpioOpen(  );
-	GpioSet( FPGA_3V3_CTR , GPIO_SET_ON );
-	GpioSet( FPGA_1V2_CTR , GPIO_SET_ON );
-	GpioSet( FPGA_2V5_CTR , GPIO_SET_ON );
-	usleep(130000);
-    LOGD( "xin:===poweron_spi设备上电结束" );
+	//LOGD("xin:===poweron_spi设备上电开始");
+	if(GpioOpen()< 0)
+    {
+        LOGD("xin:===poweron_spi设备上电异常");
+    }else{
+        GpioSet(FPGA_3V3_CTR, GPIO_SET_ON);
+        GpioSet(FPGA_1V2_CTR, GPIO_SET_ON);
+        GpioSet(FPGA_2V5_CTR, GPIO_SET_ON);
+        usleep(130000);
+        LOGD("xin:===poweron_spi设备上电正常");
+    } 
 }
 
 

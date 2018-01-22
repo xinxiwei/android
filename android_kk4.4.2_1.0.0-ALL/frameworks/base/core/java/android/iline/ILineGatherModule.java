@@ -54,7 +54,6 @@ public class ILineGatherModule {
     public ILineGatherModule( ) {
     
     }
-   
     
     public void setCallBack(PressDataCallBack cb){
     	mCallBack = cb;

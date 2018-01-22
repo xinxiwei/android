@@ -134,6 +134,7 @@ extern int register_android_database_SQLiteDebug(JNIEnv* env);
 extern int register_android_iline_JNITest(JNIEnv* env);
 extern int register_android_iline_ILineGatherModule(JNIEnv* env);
 extern int register_android_iline_ILineVibrationModule(JNIEnv* env);
+extern int register_android_iline_ILineCalibrateModule(JNIEnv* env);
 extern int register_android_iline_ILineBeep(JNIEnv* env);
 extern int register_android_iline_ILineLight(JNIEnv* env);
 extern int register_android_iline_ILineBackLight(JNIEnv* env);
@@ -1101,6 +1102,7 @@ static const RegJNIRec gRegJNI[] = {
     REG_JNI(register_android_iline_JNITest),
     REG_JNI(register_android_iline_ILineGatherModule),
     REG_JNI(register_android_iline_ILineVibrationModule),
+    REG_JNI(register_android_iline_ILineCalibrateModule),
     REG_JNI(register_android_iline_ILineBeep),
     REG_JNI(register_android_iline_ILineLight),
 	REG_JNI(register_android_iline_ILineBackLight),

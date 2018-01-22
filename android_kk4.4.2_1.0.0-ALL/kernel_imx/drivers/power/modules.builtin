@@ -1,0 +1,3 @@
+kernel/drivers/power/power_supply.ko
+kernel/drivers/power/max17048_battery.ko
+kernel/drivers/power/sabresd_battery.ko

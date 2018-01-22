@@ -15,6 +15,8 @@ public class SgPropertyBase {
 
     private float minFreq;//下限频率
     private float maxFreq;//上限频率
+    private float calibExpecteValue;//校准期望值
+	
     private int coupleType;//耦合方式
     private int rangeMode;//量程模式
     private int signalType;//信号类型
@@ -27,7 +29,19 @@ public class SgPropertyBase {
     private float daqFreq;//实际采样频率
     private int waveLength;//波形长度
 	private int versionMode;
+	
+	private int voltageRange;//量程
+	
+	
+	public int getVoltageRange() {
+        return voltageRange;
+    }
 
+    public void setVoltageRange(int voltageRange) {
+        this.voltageRange = voltageRange;
+    }
+	
+	
 	public int getVersionMode(){
 		return versionMode;
 	}
@@ -89,6 +103,14 @@ public class SgPropertyBase {
 
     public void setMaxFreq(float maxFreq) {
         this.maxFreq = maxFreq;
+    }
+	
+	public float getCalibExpecteValue() {
+        return calibExpecteValue;
+    }
+
+    public void setCalibExpecteValue(float calibExpecteValue) {
+        this.calibExpecteValue = calibExpecteValue;
     }
 
     public int getCoupleType() {

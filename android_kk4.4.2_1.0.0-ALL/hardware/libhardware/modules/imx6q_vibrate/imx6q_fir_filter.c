@@ -507,6 +507,7 @@ void run_fir(float *src,//原数据
     {
         return;
     }
+    //LOGD("fir coeff_number = %d,decifactor = %d", coeff_number,decifactor);
 	while(cur_items >= coeff_number)//当长度大于等于FIR滤波系数点数，才可以进行滤波计算
 	{
 		// 每个抽样的点都计算一次
@@ -526,7 +527,7 @@ void run_fir(float *src,//原数据
 /* 功能描述：fir低通滤波入口函数 */
 void  enter_fir_filter(float *src_data, int length,  int up_freq)
 {
-	//LOGD("xin: enter_fir_filter_length = %d ,  up_freq = %d " , length , up_freq );
+	LOGD("xin: enter_fir_filter_length = %d ,  up_freq = %d " , length , up_freq );
     if(src_data == NULL || length ==0 || up_freq ==0)
     {
         return;
