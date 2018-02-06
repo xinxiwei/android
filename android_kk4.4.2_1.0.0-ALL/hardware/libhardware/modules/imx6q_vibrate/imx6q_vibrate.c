@@ -173,6 +173,14 @@ void flag_init() //对所有标识flag 清0
     auto_voltagerange_flag = false;
 }
 
+void close_init() //回调前统一运行函数
+{
+    LOGD("振动close_init====，下电，关闭主设备，清flag");
+    poweroff_spi();//下电
+	masterspi_close();//关闭主设备
+    flag_init();//对所有标识flag 清0
+}
+
 void common_start()//打开设备和开始fpga采集
 {
     LOGD("common_start stop_vibrate_smp_flag = %d, fd = %d, [%s]\n", stop_vibrate_smp_flag, fd, log_time());
@@ -210,57 +218,35 @@ void common_start()//打开设备和开始fpga采集
 	{
         LOGD("common_start启动DMA时检测到停止振动采集标识, 不再继续打开DMA，直接return出去");
         return;
-	}else{
-        if(-1 == fd)
-        { 
-        	LOGD("common_start启动DMA时检测到fd = -1, 不再继续打开DMA，直接return出去0000, [%s]\n", log_time());
-        	return;  
+	}else{                
+        res = ioctl(fd, SPIDEV_IOC_RXSTREAMON, NULL);//启动DMA采集
+        if(res != 0) //启动DMA采集失败时，重新启动
+        {
+            LOGD("common_startDMA采集-启动失败=====, fd = %d, [%s]\n", fd, log_time());                
         }else{
-        	if(-1 == fd)
-        	{        		
-        		LOGD("common_start启动DMA时检测到fd = -1, 不再继续打开DMA，直接return出去1111, [%s]\n", log_time());
-        		return;
-        	}        
-            res = ioctl(fd, SPIDEV_IOC_RXSTREAMON, NULL);//启动DMA采集
-            if(res != 0) //启动DMA采集失败时，重新启动
-            {
-                LOGD("common_startDMA采集-启动失败=====, fd = %d, [%s]\n", fd, log_time());                
-            }else{
-                LOGD("common_startDMA采集-启动成功, fd = %d, [%s]\n", fd, log_time());
-            	swrite(StartSampleAddr, StartSampleData);// 启动FPGA采集板
-            }
-        }            
+            LOGD("common_startDMA采集-启动成功, fd = %d, [%s]\n", fd, log_time());
+            swrite(StartSampleAddr, StartSampleData);// 启动FPGA采集板
+        }
     }
 }
 
 
 inline void stop_fpga_dma()//停止FPGA采集, DMA搬运，关闭设备文件
-{
-    if(fd != -1)
+{    
+    //LOGD("stop_fpga-dma停止FPGA, DMA , fd = %d, is : [%s]\n", fd, log_time());
+    int res = ioctl(fd, SPIDEV_IOC_RXSTREAMOFF, NULL);  //停止DMA搬运
+    if(res != 0) //启动DMA采集失败时，重新启动
     {
-        //LOGD("stop_fpga-dma停止FPGA, DMA stop_vibrate_smp_ flag = %d, fd = %d, is : [%s]\n", stop_vibrate_smp_flag, fd, log_time());
-        int res = ioctl(fd, SPIDEV_IOC_RXSTREAMOFF, NULL);  //停止DMA搬运
-        if(res != 0) //启动DMA采集失败时，重新启动
-        {
-            LOGD("stop_fpga-dma停止FPGA DMA: DMA采集-停止失败=====, fd = %d", fd);
-        }else{
-            LOGD("stop_fpga-dma停止FPGA DMA: DMA采集-停止成功, fd = %d", fd);
-        }
-        if(close(fd) == 0)//关闭从设备文件
-        {
-            fd = -1; //关闭成功重新初始fd
-            LOGD("stop_fpga-dma关闭从SPI设备文件成功,将fd重新初始化为 %d", fd);
-        }
-        swrite(StopSampleAddr, StopSampleData);//stop fpga
+        LOGD("stop_fpga-dma停止FPGA DMA: DMA采集-停止失败=====, fd = %d", fd);
+    }else{
+        LOGD("stop_fpga-dma停止FPGA DMA: DMA采集-停止成功, fd = %d", fd);
     }
-
-	if(stop_vibrate_smp_flag) // 停止振动采集标识
-	{
-        LOGD("stop_fpga-dma停止FPGA, DMA时测到停止振动采集标识，提前post信号量");
-        //poweroff_spi(); //停止时下电，会使后台自启动时寄存器失败，从而快速回调寄存器失败异常，这样会造成上层APP收到寄存器失败后变成开始采集，所以去掉此代码
-        sem_post(&run_sem);
-        return;
-	}
+    if(close(fd) == 0)//关闭从设备文件
+    {
+        fd = -1; //关闭成功重新初始fd
+        LOGD("stop_fpga-dma关闭从SPI设备文件成功,将fd重新初始化为 %d", fd);
+    }
+    swrite(StopSampleAddr, StopSampleData);//stop fpga   
 }
 
 static int stop_vibrate_sample(struct spictl_device_t* dev)//停止振动采集，会将stop_vibrate_smp_ flag 置为1，若为1，stop_fpga-dma时会下电
@@ -268,25 +254,22 @@ static int stop_vibrate_sample(struct spictl_device_t* dev)//停止振动采集�
     LOGD("停止振动采集开始 fd = %d, start_enable_ flag = %d is : [%s]\n", fd, start_enable_flag, log_time());
 
     stop_vibrate_smp_flag = true;
+    stop_vread_flag = true; //停止读取数据
 	if(!start_enable_flag)
 	{
 		LOGD("停止振动采集, 此时start线程刚结束，无线程存在, 直接回调false给上层");
 		usleep(DELAY_500000); //用于等待stop_vibrate_smp_ flag 变量变化，防止在还没有关完前，重新响应start
-        if(fd != -1)
-        {
+        if(-1 != fd)
+        {            
             stop_fpga_dma();
         }
-        poweroff_spi();  //下电
-        masterspi_close();
-        
-        flag_init();//停止和异常回调 对所有标识flag清0
+        close_init();
 		vibrate_callback_backup.stop_ch_callback(false);
         return 0;
 	}
 
-    //LOGD("停止振动采集stop_vibrate_smp_flag = 1，立即停止读取数据, 调用stop_fpga_ dma函数");
-    stop_vread_flag = true; //停止读取数据
-    stop_fpga_dma();    
+    LOGD("停止振动采集stop_vibrate_smp_flag = 1，post信号量");
+    sem_post(&run_sem);
 	return 0;
 }
 
@@ -335,10 +318,7 @@ void read_vibrate_data(int signo) //读取振动采集数据
 			LOGD("Error: spi slave device read fail !\n ");
 		}
 		stop_vread_flag = true;
-        stop_fpga_dma();
-
 		smp_buf = (int*)&(max_char_buf);
-
 		//LOGD("post振动信号量(总长小于16K) : [%s]\n", log_time());
         v_loop_num = 0;
 		sem_post(&run_sem);
@@ -358,10 +338,7 @@ void read_vibrate_data(int signo) //读取振动采集数据
         else if(v_loop_num == shang)
 		{
             stop_vread_flag = true; //flag置1, 停止继续读数据
-            stop_fpga_dma();
-
 			memcpy(&max_char_buf[SIZE_60K * shang], &read_60K_buf, yu * sizeof(float));
-
             smp_buf = (int*)&(max_char_buf);
 
             LOGD("post振动信号量(总长大于16K且有余数) : [%s]\n", log_time());
@@ -384,10 +361,7 @@ void read_vibrate_data(int signo) //读取振动采集数据
 		else if(v_loop_num == shang)
 		{
             stop_vread_flag = true;
-            stop_fpga_dma();
-
             smp_buf = (int*)&(max_char_buf);
-
             //LOGD("post振动信号量(总长大于16K, 无余数) : [%s]\n", log_time());
             v_loop_num = 0;
             sem_post(&run_sem);
@@ -522,7 +496,8 @@ void *time_wave_thread(void* arg) //时域线程
 			{
 	            LOGD("时域运算线程检测到停止振动采集标识为1，调用stop_DMA_FPGA, 释放内存，初始化flag变量，回调停止采集数据给上层");
 				goto stop_daq;
-			}else{            
+			}else{    
+                stop_fpga_dma();
 	            if(auto_voltagerange_flag)
 	            {
 	                if(fabs(t_pkvalue) < 0.23)
@@ -535,16 +510,15 @@ void *time_wave_thread(void* arg) //时域线程
 	                    vol_range = VOL_RANGE_V25;//表示电压量程是25V
 	                }
 	                LOGD("fabs(t_pkvalue) = %f, voltage_ range = %d", fabs(t_pkvalue), vol_range);
-	                poweroff_spi();  //下电
-	                masterspi_close();
-					thread_finished_flag = true;
+                    
+					thread_finished_flag = true;	                
                     
                     if(stop_vibrate_smp_flag)
                     {
-                        flag_init();//停止和异常回调 对所有标识flag清0
+                        close_init();
                         vibrate_callback_backup.single_ch_callback(t_invalid_buf, 0, false);//用于停止采集时的异常回调
-                    }else{                        
-                        flag_init();
+                    }else{   
+                        close_init();
                         auto_voltagerange_flag = true;//第一次探测后，不清0，让第二次量程校准后正式采集参数生效
                         vibrate_callback_backup.single_ch_callback(probe_vol_range_buf, 3, false);	//探测电压量程的回调
                     }
@@ -554,13 +528,14 @@ void *time_wave_thread(void* arg) //时域线程
                 else //回调正常数据
                 {
 				    thread_finished_flag = true;
-                    
                     if(stop_vibrate_smp_flag)
                     {
-                        flag_init();//停止和异常回调 对所有标识flag清0
+                        LOGD("时域回调正常数据时，检测到手动停止标识");
+                        flag_init();//回调前 对所有标识flag清0
                         vibrate_callback_backup.single_ch_callback(t_invalid_buf, 0, false);//用于停止采集时的异常回调
                     }else{
-                        flag_init();
+                        LOGD("时域回调正常数据");
+                        flag_init();//回调前 对所有标识flag清0
                         restart_power_on_flag = true;
                         auto_voltagerange_flag = true;//第一次探测后，不清0，让第二次量程校准后正式采集参数生效
                         vibrate_callback_backup.single_ch_callback(time_CH1_smp_buf, t_wave_length, true);	//回调时域波形
@@ -578,22 +553,17 @@ void *time_wave_thread(void* arg) //时域线程
         }
         stop_daq:
         {
-            usleep(DELAY_100000);
-            if(fd != -1)
-            {
-                stop_fpga_dma();
-            }
+            stop_fpga_dma();
             if(time_CH1_smp_buf != NULL)
             {
                 free(time_CH1_smp_buf);
                 time_CH1_smp_buf = NULL;
             }
             thread_finished_flag = true;            
-            poweroff_spi();  //下电
-            masterspi_close();
+            close_init();
 
             LOGD("时域运算线程异常回调数据 is : [%s]\n", log_time());
-            flag_init();//停止和异常回调 对所有标识flag清0
+            
             vibrate_callback_backup.single_ch_callback(t_invalid_buf, 0, false);//用于停止采集时的异常回调
             return NULL;
         }
@@ -720,13 +690,6 @@ void *total_rend_thread(void* arg) //总值趋势线程
 			enter_iir_filter(rend_CH1_smp_buf, r_temp_len, r_max_freq, r_min_freq); //IIR 高通滤波，长度是采样的点
 		} 
         
-    #if 0  
-        if(my_totalrend.signal_type == 2)//位移时再过一次IIR 20HZ高通滤波
-        {
-            enter_iir_filter(rend_CH1_smp_buf, r_temp_len, r_max_freq, 20);
-        }
-    #endif
-        
 		memcpy(rend_CH1_smp_buf, &rend_CH1_smp_buf[r_discard_pnts], r_wave_length * sizeof(float));//将IIR滤波后 去掉丢弃的点
     #endif
 
@@ -739,10 +702,10 @@ void *total_rend_thread(void* arg) //总值趋势线程
 			{
 	            LOGD("总值数据线程检测到停止振动采集标识为1，调用stop_DMA_FPGA, 释放内存，初始化flag变量，回调停止采集数据给上层");
 	            goto stop_daq;
-			}else{		    
+			}else{	
+                stop_fpga_dma();
 			    if(auto_voltagerange_flag)
-	            {
-                
+	            {                
 	                if(fabs(r_pkvalue) < 0.23)
 	                {
 	                    vol_range = VOL_RANGE_V0P25;//表示电压量程是0.25V
@@ -759,17 +722,15 @@ void *total_rend_thread(void* arg) //总值趋势线程
 	                    free(rend_CH1_smp_buf);
 	                    rend_CH1_smp_buf = NULL;
 	                }
-					poweroff_spi();  //下电
-	                masterspi_close();
-					thread_finished_flag = true;
-				
+                    
+					thread_finished_flag = true;						
                     
                     if(stop_vibrate_smp_flag)
                     {
-                        flag_init();//停止和异常回调 对所有标识flag清0
+                        close_init();
                         vibrate_callback_backup.single_ch_callback(r_invalid_buf, 0, false);//用于停止采集时的异常回调
                     }else{
-                        flag_init();
+                        close_init();
                         auto_voltagerange_flag = true;//第一次探测后，不清0，让第二次量程校准后正式采集参数生效
                         vibrate_callback_backup.single_ch_callback(probe_vol_range_buf, 3, false);
                     }                    
@@ -784,13 +745,15 @@ void *total_rend_thread(void* arg) //总值趋势线程
                         rend_CH1_smp_buf = NULL;
                     }
                     thread_finished_flag = true;
-                   
+                        
                     if(stop_vibrate_smp_flag)
                     {
-                        flag_init();//停止和异常回调 对所有标识flag清0
+                        LOGD("总值回调正常数据时，检测到手动停止标识");
+                        flag_init();//回调前 对所有标识flag清0
                         vibrate_callback_backup.single_ch_callback(r_invalid_buf, 0, false);//用于停止采集时的异常回调
                     }else{
-                        flag_init();
+                        LOGD("总值回调正常数据");
+                        flag_init();//回调前 对所有标识flag清0
                         restart_power_on_flag = true;
                         auto_voltagerange_flag = true;//第一次探测后，不清0，让第二次量程校准后正式采集参数生效
                         vibrate_callback_backup.single_ch_callback(r_CH1_value, sizeof(r_CH1_value)/sizeof(float), true); //回调总值单个值
@@ -804,22 +767,17 @@ void *total_rend_thread(void* arg) //总值趋势线程
         
         stop_daq:
         {
-            usleep(DELAY_100000);
-            if(fd != -1)
-            {
-                stop_fpga_dma();
-            }
+            stop_fpga_dma();            
             if(rend_CH1_smp_buf != NULL)
             {
                 free(rend_CH1_smp_buf);
                 rend_CH1_smp_buf = NULL;
             }
             thread_finished_flag = true;
-            poweroff_spi();  //下电
-            masterspi_close();
+            close_init();
 
             LOGD("总值数据线程异常回调数据 is : [%s]\n", log_time());
-            flag_init();//停止和异常回调 对所有标识flag清0
+            
             vibrate_callback_backup.single_ch_callback(r_invalid_buf, 0, false); //用于停止采集时的异常回调
             return NULL;
         }
@@ -880,8 +838,7 @@ void *evalute_level_thread(void* arg) //振动等级评估线程
                 analyze_CH_data(smp_buf[i], e_CH_data);
                 evalute_CH1_smp_buf[i] = e_CH_data[2] / 10;
             }
-        }
-		
+        }		
         
     #if READ_CALIB_PARA                    
         LOGD("从FRAM 读取校准参数===");
@@ -918,14 +875,11 @@ void *evalute_level_thread(void* arg) //振动等级评估线程
 			free(evalute_CH1_smp_buf);
 			evalute_CH1_smp_buf = NULL;
 		}
-
 		////////自动stop
 		stop_fpga_dma();
-		poweroff_spi();  //下电
-	    masterspi_close();
 	    thread_finished_flag = true;
+		close_init();
 
-	    flag_init();//停止和异常回调 对所有标识flag清0
 		vibrate_callback_backup.single_ch_callback(evalute_value, sizeof(evalute_value) / sizeof(float), true); //回调等级评估值
 		LOGD("等级评估回调结束 is : [%s]\n", log_time());
     }
@@ -968,7 +922,9 @@ static int start_vibrate_CH_timewave(struct spictl_device_t* dev, struct time_wa
     }else{
         auto_voltagerange_flag = false; //清0，不再探测自动量程，使用正常配置参数采集
         t_sleep_time = DELAY_3000000;
-		if((ACC_TYPE == tWave.signal_type && (int)tWave.min_freq < FREQ_7) || ((VEL_TYPE == tWave.signal_type || DSP_TYPE == tWave.signal_type) && (int)tWave.min_freq < FREQ_10)) //DC模式时，重新将电压量程设为25V
+    
+		if((ACC_TYPE == tWave.signal_type && (int)tWave.min_freq < FREQ_7) 
+            || ((VEL_TYPE == tWave.signal_type || DSP_TYPE == tWave.signal_type) && (int)tWave.min_freq < FREQ_10)) //DC模式时，重新将电压量程设为25V
         {
             LOGD("DC模式强制切换到 25V量程===");
             vol_range = VOL_RANGE_V25;
@@ -993,10 +949,9 @@ static int start_vibrate_CH_timewave(struct spictl_device_t* dev, struct time_wa
         if(-1 == reg_ret_value)
 		{
             LOGD("寄存器配置失败, 回调寄存器失败数据10001, flag全部初始化为0");
-			flag_init(); //停止和异常回调 对所有标识flag清0
-
-            poweroff_spi();
-            masterspi_close();
+            stop_fpga_dma();
+            close_init();
+            
 			vibrate_callback_backup.single_ch_callback(vib_reg_fail_buf, 1, true);//回调寄存器失败数据10001
 			return 0;
 		}
@@ -1011,7 +966,7 @@ static int start_vibrate_CH_timewave(struct spictl_device_t* dev, struct time_wa
 
 	while (!thread_finished_flag); // 用于等待算法线程线束时置1，若线程结束时，继续往下运行
 
-	usleep(DELAY_50000);//等待回调结束延时
+	usleep(DELAY_100000);//等待回调结束延时
     LOGD("响应时域点击结束 [%s]\n", log_time());
 	return 0;
 }
@@ -1054,7 +1009,9 @@ static int start_vibrate_CH_totalrend(struct spictl_device_t* dev, struct total_
     }else{
         auto_voltagerange_flag = false; //清0，不再探测自动量程，使用正常配置参数采集
         r_sleep_time = DELAY_3000000;
-		if((ACC_TYPE == tRend.signal_type && (int)tRend.min_freq < FREQ_7) || ((VEL_TYPE == tRend.signal_type || DSP_TYPE == tRend.signal_type) && (int)tRend.min_freq < FREQ_10)) //DC模式时，重新将电压量程设为25V
+    
+		if((ACC_TYPE == tRend.signal_type && (int)tRend.min_freq < FREQ_7) 
+            || ((VEL_TYPE == tRend.signal_type || DSP_TYPE == tRend.signal_type) && (int)tRend.min_freq < FREQ_10)) //DC模式时，重新将电压量程设为25V
         {
             LOGD("DC模式强制切换到 25V量程===");
             vol_range = VOL_RANGE_V25;
@@ -1080,10 +1037,9 @@ static int start_vibrate_CH_totalrend(struct spictl_device_t* dev, struct total_
 		if(-1 == reg_ret_value)
 		{
             LOGD("寄存器配置失败, 回调寄存器失败数据10001, flag全部初始化为0");
-			flag_init(); //停止和异常回调 对所有标识flag清0
-
-            poweroff_spi();
-            masterspi_close();
+            stop_fpga_dma();
+            close_init();
+                
 			vibrate_callback_backup.single_ch_callback(vib_reg_fail_buf, 1, true);//回调寄存器失败数据10001
 			return 0;
 		}
@@ -1098,7 +1054,7 @@ static int start_vibrate_CH_totalrend(struct spictl_device_t* dev, struct total_
 
 	while (!thread_finished_flag); // 用于等待算法线程线束时置1，若线程结束时，继续往下运行
 
-	usleep(DELAY_50000);
+	usleep(DELAY_100000);
 	LOGD("响应总值点击结束 [%s]\n", log_time());
 	return 0;
 }
@@ -1126,10 +1082,9 @@ static int start_vibrate_evalute_level(struct spictl_device_t* dev, struct time_
 	if(-1 == reg_ret_value)
 	{
 		LOGD("寄存器配置失败, 回调寄存器失败数据10001, flag全部初始化为0");
-		flag_init(); //停止和异常回调 对所有标识flag清0
-
-		poweroff_spi();
-        masterspi_close();
+        stop_fpga_dma();
+		close_init();
+            
 		vibrate_callback_backup.single_ch_callback(vib_reg_fail_buf, 1, true);//回调寄存器失败数据10001
 		return 0;
 	}
@@ -1143,7 +1098,7 @@ static int start_vibrate_evalute_level(struct spictl_device_t* dev, struct time_
 
  	while (!thread_finished_flag); // 用于等待算法线程线束时置1，若线程结束时，继续往下运行
 
-    usleep(DELAY_50000);
+    usleep(DELAY_100000);
 	LOGD("响应振动等级评估结束 [%s]\n", log_time());
 	return 0;
 }
