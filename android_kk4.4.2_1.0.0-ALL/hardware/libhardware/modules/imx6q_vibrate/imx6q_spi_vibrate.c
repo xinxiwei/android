@@ -29,41 +29,43 @@ void feature_value(float *pdata, int length, float *ret_value)
 {
 	int i=0;
     double *src_data=NULL;
-	if (pdata != NULL && length != 0)
+	if (pdata == NULL && length == 0)
 	{
-		src_data = (double*)malloc(length *sizeof(double));
-		if (src_data == NULL)
-		{
-			LOGD("src_data 分配内存失败！" );
-			return;
-		}
-		memset(src_data, 0, length*sizeof(double));
+        return ;
+    }
 
-		for (i=0;i<length;i++)
-		{
-			src_data[i] =(double)pdata[i];
-		}
-
-		ret_value[0] = (float)WALG_TDA_TruePeakValue(src_data, length); //真峰值
-		ret_value[1] = (float)WALG_TDA_TruePeakToPeakValue(src_data, length);//真峰峰值
-		ret_value[2] = (float)WALG_TDA_RMSValue(src_data, length); //真有效值
-
-		ret_value[3] = (float)WALG_TDA_Max(src_data, length);//最大值
-		ret_value[4] = (float)WALG_TDA_Min(src_data, length);//最小值
-		ret_value[5] = (float)WALG_TDA_DCValue(src_data, length);//均值
-
-		ret_value[6] = (float)WALG_TDA_Skew(src_data, length);//偏度(歪度)
-		ret_value[7] = (float)WALG_TDA_Variance(src_data, length);//方差
-
-		ret_value[8] = (float)WALG_TDA_CrestFactor(src_data, length);//峰值因子
-		ret_value[9] = (float)WALG_TDA_Kurtosis(src_data, length);//峭度指标
-		ret_value[10] = (float)WALG_TDA_ShapeFactor(src_data, length);//波形因数
-		ret_value[11] = (float)WALG_TDA_ImpulseFactor(src_data, length);//脉冲因子
-		ret_value[12] = (float)WALG_TDA_ClearanceFactor(src_data, length);//裕度因子
-
-		ret_value[13] = (float)WALG_TDA_AbsDCValue(src_data, length);//平均幅值
-		ret_value[14] = (float)WALG_TDA_SqrRootValue(src_data, length);//方根幅值
+	src_data = (double*)malloc(length *sizeof(double));
+	if (src_data == NULL)
+	{
+		LOGD("src_data 分配内存失败！" );
+		return;
 	}
+	memset(src_data, 0, length*sizeof(double));
+
+	for (i=0;i<length;i++)
+	{
+		src_data[i] =(double)pdata[i];
+	}
+
+	ret_value[0] = (float)WALG_TDA_TruePeakValue(src_data, length); //真峰值
+	ret_value[1] = (float)WALG_TDA_TruePeakToPeakValue(src_data, length);//真峰峰值
+	ret_value[2] = (float)WALG_TDA_RMSValue(src_data, length); //真有效值
+
+	ret_value[3] = (float)WALG_TDA_Max(src_data, length);//最大值
+	ret_value[4] = (float)WALG_TDA_Min(src_data, length);//最小值
+	ret_value[5] = (float)WALG_TDA_DCValue(src_data, length);//均值
+
+	ret_value[6] = (float)WALG_TDA_Skew(src_data, length);//偏度(歪度)
+	ret_value[7] = (float)WALG_TDA_Variance(src_data, length);//方差
+
+	ret_value[8] = (float)WALG_TDA_CrestFactor(src_data, length);//峰值因子
+	ret_value[9] = (float)WALG_TDA_Kurtosis(src_data, length);//峭度指标
+	ret_value[10] = (float)WALG_TDA_ShapeFactor(src_data, length);//波形因数
+	ret_value[11] = (float)WALG_TDA_ImpulseFactor(src_data, length);//脉冲因子
+	ret_value[12] = (float)WALG_TDA_ClearanceFactor(src_data, length);//裕度因子
+
+	ret_value[13] = (float)WALG_TDA_AbsDCValue(src_data, length);//平均幅值
+	ret_value[14] = (float)WALG_TDA_SqrRootValue(src_data, length);//方根幅值	
 
 	if (src_data  !=  NULL)
 	{

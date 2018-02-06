@@ -1,11 +1,12 @@
 
+
 #ifndef ANDROID_IMX6Q_COMMON_CONFIG
 #define ANDROID_IMX6Q_COMMON_CONFIG
 /////////////////////////振动
 #define SIZE_15360     15360
 #define SIZE_60K       61440
 
-#define MAX_SIZE  3284288 //单通道最大（128*1024 + 690000）*4 = 3284288, 双通道最大（128*1024 + 690000）*2*4 = 6568576    //31457280
+#define VIB_MAX_SIZE  3284288 //单通道最大（128*1024 + 690000）*4 = 3284288, 双通道最大（128*1024 + 690000）*2*4 = 6568576    //31457280
 
 #define FEATURE_NUM     15  //特征值个数
 
@@ -59,7 +60,7 @@
 #define VOL_RANGE_V2P5     1
 #define VOL_RANGE_V0P25    2
     
-#define FABS_0     0.00000000001  
+#define EPSINON     0.00000000001  
     
 #define MULTIPLE_NUM 1000000
 
@@ -93,9 +94,9 @@
 //压力
 #define  SIZE_PRESS   32768  //压力采样长度
 #define  SMP_RATE     25600   //修改压力采集客户反馈时长不够问题，采样率由102400 改为25600
-#define  MAX_SIZE2    131072 //单通道最大（32K*1024）*4 = 131072
+#define  PRESS_MAX_SIZE    131072 //单通道最大（32K*1024）*4 = 131072
 
 //校准
-#define   MAX_SIZE1  65536 //单通道最大（16*1024）*4 = 65536
+#define   CALIB_MAX_SIZE  65536 //单通道最大（16*1024）*4 = 65536
 	
 #endif

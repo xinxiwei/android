@@ -43,7 +43,7 @@ float fail_buf[3] = {20000, 20000, 20000}; // 压力采集时当寄存器配置�
 
 int *psample_buf  = NULL; //最终采样的原始数据
 unsigned char read_60K_buf[SIZE_60K] = {0}; // 读压力数据buf
-unsigned char g_max_char_buf[MAX_SIZE2] ={0}; 
+unsigned char g_max_char_buf[PRESS_MAX_SIZE] ={0}; 
 
 volatile bool thread_finished_flag = false; //表示当前线程完成标识
 volatile bool restart_power_on_flag = false;  // spi 重新上电标识, 0标识需要重新上电
@@ -601,7 +601,7 @@ void *press_dial_thread(void* arg) //压力表盘模式
 static int start_pressure_flag0(struct spictl_device_t* dev)// 压力标0模式
 {
     memset(read_60K_buf, 0, SIZE_60K*sizeof(unsigned char)); 
-    memset(g_max_char_buf, 0, MAX_SIZE2*sizeof(unsigned char)); 
+    memset(g_max_char_buf, 0, PRESS_MAX_SIZE*sizeof(unsigned char)); 
     p_loop_num = 0; 
     stop_pread_flag = false; 
 
@@ -651,7 +651,7 @@ static int start_pressure_curve(struct spictl_device_t* dev, float flag0_value) 
         return 0; 
     }
     memset(read_60K_buf, 0, SIZE_60K*sizeof(unsigned char)); 
-	memset(g_max_char_buf, 0, MAX_SIZE2*sizeof(unsigned char)); 
+	memset(g_max_char_buf, 0, PRESS_MAX_SIZE*sizeof(unsigned char)); 
     p_loop_num = 0; 
     stop_pread_flag = false; 
     pflag0_value = flag0_value; 
@@ -706,7 +706,7 @@ static int start_pressure_dial(struct spictl_device_t* dev, float flag0_value)//
     }
 
     memset(read_60K_buf, 0, SIZE_60K*sizeof(unsigned char)); 
-	memset(g_max_char_buf, 0, MAX_SIZE2*sizeof(unsigned char)); 
+	memset(g_max_char_buf, 0, PRESS_MAX_SIZE*sizeof(unsigned char)); 
     p_loop_num = 0; 
     stop_pread_flag = false; 
     pflag0_value = flag0_value; 

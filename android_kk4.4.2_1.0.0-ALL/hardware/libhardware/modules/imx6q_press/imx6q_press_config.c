@@ -959,10 +959,6 @@ int set_press_reg( int smp_rate ) //设置压力采集寄存器，默认CHA
 
     set_24V( CHA ,  true );//true表示启用24v电源的开关激励，真实压力传感器环境   ， false 表示不启用24V激励，发射器验证
 
-    if ((sread(0) == -1) || (sread(0x4) == -1))
-    {
-        return -1;
-    }
 	set_sample_rate( smp_rate );
 	//---------------
 	LOGD( "xin:=== set_press_reg==========end" );

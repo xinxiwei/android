@@ -1014,15 +1014,7 @@ int set_singleCH_vibrate_reg(int ch, int signalType, float maxFreq, float minFre
 			}
 		}
 
-		if ((sread(0) == -1) || (sread(0x8) == -1))
-	    {
-	        return -1;
-	    }
 		set_sample_rate((int)maxFreq*2.56); //设置采样频率（包括设置ADC CLK，ADC_MODE）
-	    if ((sread(0) == -1) || (sread(0x8) == -1))
-	    {
-	        return -1;
-	    }
 
 	    if (version_mode == TEST_MODE)  ////如果为1表示内部  测试版本
 	    {
@@ -1118,15 +1110,7 @@ int set_singleCH_vibrate_reg(int ch, int signalType, float maxFreq, float minFre
 			}
 		}
 
-		if ((sread(0) == -1) || (sread(0x4) == -1))
-	    {
-	        return -1;
-	    }
 		set_sample_rate((int)maxFreq*2.56); //设置采样频率（包括设置ADC CLK，ADC_MODE）
-	    if ((sread(0) == -1) || (sread(0x4) == -1))
-	    {
-	        return -1;
-	    }
 
 	    if (version_mode == TEST_MODE)  ////如果为1表示内部  测试版本
 	    {

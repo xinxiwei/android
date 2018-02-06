@@ -361,7 +361,7 @@ inline void write_calib_para(int signal_type, float mgain, float moffset, int ma
         swrite(offset_addr, (int)((-1) * moffset * MULTIPLE_NUM) | (0x8<<20));//转换为正数，并在第24位添加符号位
     }else
     {
-        LOGD("offset大于于0");
+        LOGD("offset大于0");
         swrite(offset_addr, (int)(moffset * MULTIPLE_NUM));
     }
 }

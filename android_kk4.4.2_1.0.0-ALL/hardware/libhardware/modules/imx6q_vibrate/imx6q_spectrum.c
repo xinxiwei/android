@@ -47,17 +47,17 @@ SLData_t  SDS_I0Bessel(const SLData_t x)
 {
     SLData_t ax,  y;
 
-    if(( ax = SDS_Abs( x)) < 3.75)
+    if((ax = SDS_Abs(x)) < 3.75)
     {
 		y = x /((SLData_t)3.75);
 		y *= y;
-		return((SLData_t)(SIGLIB_ONE + y *( 3.5156229 + y *( 3.0899424 + y *( 1.2067492 +
-				y *( 0.2659732 + y *( 0.360768e-1 + y * 0.45813e-2)))))));
+		return((SLData_t)(SIGLIB_ONE + y *(3.5156229 + y *(3.0899424 + y *(1.2067492 +
+				y *(0.2659732 + y *(0.360768e-1 + y * 0.45813e-2)))))));
     }
     else
     {
 		y =((SLData_t)3.75) / ax;
-		return((SLData_t)((SDS_Exp( ax) / SDS_Sqrt(ax)) *(0.39894228 + y *(0.1328592e-1 + y *(0.225319e-2 +
+		return((SLData_t)((SDS_Exp(ax) / SDS_Sqrt(ax)) *(0.39894228 + y *(0.1328592e-1 + y *(0.225319e-2 +
 				y *(-0.157565e-2 + y *(0.916281e-2 + y *(-0.2057706e-1 +
 				y *(0.2635537e-1 + y *(-0.1647633e-1 + y * 0.392377e-2))))))))));
     }
@@ -334,23 +334,23 @@ int WALG_SDA_FftAverage(const float pRealData[], 		//源数据区
 	switch(nAvgType)
 	{
 	case SIGLIB_FFTAVG_VECTOR: //线性
-		for( i=0; i<nLineNum; i++)
+		for(i=0; i<nLineNum; i++)
 		{
 			pAvgData[i] =(pAvgData[i]*nLastAvgNum + pRealData[i])/(nLastAvgNum+1);
 		}
 		break;
 
 	case SIGLIB_FFTAVG_RMS: //均方根
-		for( i=0; i<nLineNum; i++)
+		for(i=0; i<nLineNum; i++)
 		{
 			pAvgData[i] = sqrt((pAvgData[i]*pAvgData[i]*nLastAvgNum + pRealData[i]*pRealData[i])/(nLastAvgNum+1));
 		}
 		break;
 
 	case SIGLIB_FFTAVG_PEAKHOLD: //峰值保持
-		for( i=0; i<nLineNum; i++)
+		for(i=0; i<nLineNum; i++)
 		{
-			if( pRealData[i] > pAvgData[i])
+			if(pRealData[i] > pAvgData[i])
 			{
 				pAvgData[i] = pRealData[i];
 			}
@@ -359,7 +359,7 @@ int WALG_SDA_FftAverage(const float pRealData[], 		//源数据区
 
 	case SIGLIB_FFTAVG_NONE: //不进行
 	default:
-		for( i=0; i<nLineNum; i++)
+		for(i=0; i<nLineNum; i++)
 		{
 			pAvgData[i] = pRealData[i];
 		}
@@ -437,7 +437,7 @@ void fft_alg_entry2(float *pSrcBuf,  long length,  int window_type,  int average
 	*/
 	SDA_Rfft(pRealData,  pImagData,  pFFTCoeffs,  p_bitReverseAddressTable,  FFT_SIZE, (long)log2(FFT_SIZE));
 
-    for(i=0; i<(FFT_SIZE>>1); i++ )//FFT_SIZE/2  只对前一半数据求模
+    for(i = 0; i < (FFT_SIZE>>1); i++ )//FFT_SIZE/2  只对前一半数据求模
 	{
 	    pSrcBuf[i] = sqrt(pRealData[i]*pRealData[i] + pImagData[i]*pImagData[i]);   // R*R +I*I 开根号
 		pSrcBuf[i] /= length;

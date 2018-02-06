@@ -43,7 +43,7 @@ volatile int fd = -1; //从SPI设备文件
 volatile int g_smpLength = 0; //实际采集的波形长度
 int *g_smp_buf = NULL;  //全局采集的数据
 unsigned char read_60K_buf[SIZE_60K] = {0};// 读60K数据buf
-unsigned char g_max_char_buf[MAX_SIZE1] = {0};
+unsigned char g_max_char_buf[CALIB_MAX_SIZE] = {0};
 
 volatile bool thread_finished_flag = false; //表示当前线程完成标识
 volatile bool restart_power_on_flag = false;  // spi 重新上电标识, 0标识需要重新上电
@@ -153,8 +153,8 @@ void common_start()//打开设备和开始fpga采集
         LOGD("common_start打开设备时检测到停止振动采集标识, 不再继续打开设备文件, 直接return出去");
 		return;
     }
-
-    if((fd = open(DEVICE_NAME, O_RDWR)) == -1){
+    fd = open(DEVICE_NAME, O_RDWR);
+    if(-1 == fd){
         LOGD("common_start打开从spi设备 /dev/mxc_spidev1 失败 -- %s.", strerror(errno));
     }else{
 		LOGD("common_start打开从spi设备 /dev/mxc_spidev1 成功. fd = %d", fd);
@@ -170,12 +170,12 @@ void common_start()//打开设备和开始fpga采集
         LOGD("common_start启动DMA时检测到停止振动采集标识, 不再继续打开DMA，直接return出去");
         return;
 	}else{
-        if(fd == -1)
+        if(-1 == fd)
         { 
         	LOGD("common_start启动DMA时检测到fd = -1, 不再继续打开DMA，直接return出去0000, [%s]\n", log_time());
         	return;  
         }else{
-        	if(fd == -1)
+        	if(-1 == fd)
         	{        		
         		LOGD("common_start启动DMA时检测到fd = -1, 不再继续打开DMA，直接return出去1111, [%s]\n", log_time());
         		return;
@@ -205,7 +205,7 @@ inline void stop_fpga_dma()//停止FPGA采集, DMA搬运，关闭设备文件
         }else{
             LOGD("stop_fpga-dma停止FPGA DMA: DMA采集-停止成功, fd = %d", fd);
         }
-        if(close(fd) == 0)//关闭从设备文件
+        if(0 == close(fd))//关闭从设备文件
         {
             fd = -1; //关闭成功重新初始fd
             LOGD("stop_fpga-dma关闭从SPI设备文件成功,将fd重新初始化为 %d", fd);
@@ -282,7 +282,7 @@ void read_vibrate_data(int signo) //读取振动采集数据
                     calib_smp_discard_flag ++; 
                 }
             } */
-		}else if(c_loop_num == shang)
+		}else if(shang == c_loop_num)
 		{
             /* if(calib_smp_discard_flag >= 1) //表示丢前一波数据
             { */ 
@@ -317,7 +317,7 @@ void *vibrate_calib_thread(void* arg) //振动校准线程
     //分配需要的内存
     float *calib_CH1_smp_buf = NULL; //振动校准  通道1 采集数据
     calib_CH1_smp_buf =(float*)malloc(g_smpLength * sizeof(float));
-    if(calib_CH1_smp_buf == NULL)
+    if( NULL == calib_CH1_smp_buf)
     {
         LOGD("calib_CH1_smp_buf 分配内存失败！");
         exit(EXIT_FAILURE);		
@@ -370,7 +370,7 @@ static int start_vibrate_calibration(struct spictl_device_t* dev, struct time_wa
 	LOGD("点击振动等级开始时 stop_vibrate_smp_ flag = %d, restart_power_on_flag= %d, thread_finished_flag = %d", stop_vibrate_smp_flag, restart_power_on_flag, thread_finished_flag);
     
 	memset(read_60K_buf, 0, SIZE_60K*sizeof(unsigned char));
-    memset(g_max_char_buf, 0, MAX_SIZE1*sizeof(unsigned char));
+    memset(g_max_char_buf, 0, CALIB_MAX_SIZE * sizeof(unsigned char));
     
     LOGD("振动校准开始时 restart_power_on_flag= %d, thread_finished_flag = %d", restart_power_on_flag, thread_finished_flag);
     c_loop_num = 0;

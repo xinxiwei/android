@@ -314,10 +314,9 @@ static int get_smp_rate(int up_freq)  // 输入上限，输出采样率
 //通过FIR低通滤波器的截止频率获取降采样后的采样率
 static tPIIRFilter get_iir_filter(int samprate,  int lw_freq) //输入采样率 ，下限
 {
-    int index_sr = 0;
-    int index_fc = 0;
+    int index_sr = 0, index_fc = 0;
 
-    switch( samprate ) //采样率
+    switch(samprate) //采样率
     {
         case SAMPLE_FRE_102400:
         {
@@ -370,7 +369,7 @@ static tPIIRFilter get_iir_filter(int samprate,  int lw_freq) //输入采样率 
         }
     }
 
-    switch( lw_freq )//下限频率
+    switch(lw_freq)//下限频率
     {
         case LOWER_FRE_0_16:
         {
@@ -417,7 +416,7 @@ static tPIIRFilter get_iir_filter(int samprate,  int lw_freq) //输入采样率 
             return NULL;
         }
     }
-    //LOGD( "index_sr =%d ,  index_fc= %d" , index_sr , index_fc );
+    //LOGD("index_sr =%d ,  index_fc= %d" , index_sr , index_fc);
     return &iir_filters_table[index_sr][index_fc];
 }
 
@@ -768,15 +767,14 @@ static void cascade_iir_filter(float*   data,
 {
     uint32_t m  = 0;
     int index = 0;
-    float  a[3]  = {0.0};
-    float  b[3]  = {0.0};
+    float  a[3]  = {0.0}, b[3]  = {0.0};
     if(data == NULL|| rev_coeffs == NULL|| for_coeffs ==NULL || w== NULL)
     {
         return;
     }
     //*s1:求级数
     //*s2:滤波
-    int half_coeffs = rev_coeffs_num>>1;
+    int half_coeffs = rev_coeffs_num >>1;
 	int loop =0;
     for (loop = 0; loop < half_coeffs; loop++)
     {
@@ -876,8 +874,8 @@ void integrate_o2(float* data,  int len)//,  float alpha, float gamma, float bet
     int u16Loop = 0;
     for (u16Loop = 0; u16Loop < len; u16Loop++)
     {
-        fltTemp = ( ( 2*( x1_state ) + ( x2_state ) + data[u16Loop] )*alpha
-                  + ( gamma*( y1_state ) - beta*( y2_state ) ) )*2;
+        fltTemp = ((2*(x1_state) + (x2_state) + data[u16Loop])*alpha
+                  + (gamma*(y1_state) - beta*(y2_state)))*2;
         y2_state = y1_state;
         y1_state = fltTemp;
         x2_state = x1_state;
@@ -891,7 +889,6 @@ void integrate_o2(float* data,  int len)//,  float alpha, float gamma, float bet
 void  enter_iir_filter(float *src_data, int length,  int up_freq,  int lw_freq)
 {
     LOGD("xin：enter_iir_filter_length = %d,  up_freq = %d,  lw_freq = %d", length, up_freq, lw_freq);
-	int i=0;
     if(src_data == NULL)
     {
         return;
@@ -899,7 +896,7 @@ void  enter_iir_filter(float *src_data, int length,  int up_freq,  int lw_freq)
 	init_iir_filters();//初始化IIR滤波器系数
 
 	tIIRFilter *pIIRFilter= NULL;
-	pIIRFilter = get_iir_filter(get_smp_rate(up_freq),  lw_freq);//通过上下限，获取滤波系数
+	pIIRFilter = get_iir_filter(get_smp_rate(up_freq), lw_freq);//通过上下限，获取滤波系数
 
 	float *state_para = NULL;
 	state_para = (float*)malloc(pIIRFilter->numForCoeffs <<2);//正向系数个数
@@ -913,6 +910,7 @@ void  enter_iir_filter(float *src_data, int length,  int up_freq,  int lw_freq)
 	cascade_iir_filter(src_data, length,  pIIRFilter->pfltRevCoeffs, pIIRFilter->pfltForCoeffs, pIIRFilter->numRevCoeffs, pIIRFilter->numForCoeffs, state_para, 1.0);
 
 	#if 0
+    int i = 0;
 	/* for(i=0;i< length;i++)
 	{
 		 LOGD("enter_iir_filter_ret_data[%d] = %f", i, src_data[i]);

@@ -38,7 +38,7 @@ int GpioOpen()
 int GpioClose()
 {
     LOGD("gpio close fd = %d",gpiofd);
-    if(close(gpiofd) <0)
+    if(close(gpiofd) < 0)
     {
         LOGE("gpio close error.");
         return -1;
@@ -49,8 +49,8 @@ int GpioClose()
 
 int GpioSet(int device, int value)
 {
-	usleep( 20000 );//50000
-	if(gpiofd <0)
+	usleep(20000);//50000
+	if(gpiofd < 0)
     {
         LOGE("gpio fd < 0");
         return -1;
@@ -58,7 +58,7 @@ int GpioSet(int device, int value)
 	else
     {
         int ret = ioctl(gpiofd,device,value);
-        if(ret<0)
+        if(ret < 0)
         {
             LOGE("gpio ioctl operation false.ret=%d.",ret);
             LOGE("gpio gpiofd= %d",gpiofd);

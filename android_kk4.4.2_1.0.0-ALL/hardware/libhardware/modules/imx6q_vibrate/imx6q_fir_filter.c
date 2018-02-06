@@ -400,7 +400,8 @@ bool init_fir_filters(void)
     }
 
 	int i = 0;
-    for (i = 0; i < FIR_500_STAGE_NUMBER; ++i) {
+    for (i = 0; i < FIR_500_STAGE_NUMBER; ++i) 
+    {
         fir_items[FIR_F500].stages[i] = (fir_stage_t*)malloc(sizeof(fir_stage_t));
     }
     // 第一级
@@ -424,7 +425,8 @@ bool init_fir_filters(void)
             free(fir_items[FIR_F500].stages);
         return false;
     }
-    for (i = 0; i < FIR_1000_STAGE_NUMBER; ++i) {
+    for (i = 0; i < FIR_1000_STAGE_NUMBER; ++i) 
+    {
         fir_items[FIR_F1000].stages[i] = (fir_stage_t*)malloc(sizeof(fir_stage_t));
     }
     // 第一级
@@ -448,7 +450,8 @@ bool init_fir_filters(void)
 
         return false;
     }
-    for (i = 0; i < FIR_2500_STAGE_NUMBER; ++i) {
+    for (i = 0; i < FIR_2500_STAGE_NUMBER; ++i) 
+    {
         fir_items[FIR_F2500].stages[i] = (fir_stage_t*)malloc(sizeof(fir_stage_t));
     }
 	// 第一级
@@ -479,7 +482,8 @@ bool init_fir_filters(void)
 
         return false;
     }
-    for (i = 0; i < FIR_5000_STAGE_NUMBER; ++i) {
+    for (i = 0; i < FIR_5000_STAGE_NUMBER; ++i) 
+    {
         fir_items[FIR_F5000].stages[i] = (fir_stage_t*)malloc(sizeof(fir_stage_t));
     }
     fir_items[FIR_F5000].stages[0]->coeff        = fir_5000_1stage_coeffs;
