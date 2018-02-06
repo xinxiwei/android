@@ -32,16 +32,13 @@ void feature_value(float *pData, int length, float *ret_value)
     double *src_data=NULL;
 	if (pData != NULL && length != 0)
 	{
-        if (src_data == NULL)
+		src_data = (double*)malloc(length *sizeof(double));
+		if (src_data == NULL)
 		{
-			src_data = (double*)malloc(length *sizeof(double));
-			if (src_data == NULL)
-			{
-				LOGD("src_data 分配内存失败！" );
-				return;
-			}
-			memset(src_data, 0, length*sizeof(double));
+			LOGD("src_data 分配内存失败！" );
+			return;
 		}
+		memset(src_data, 0, length*sizeof(double));
 
 		for(i=0;i<length;i++)
 		{
@@ -81,19 +78,17 @@ float rend_value(float *pData, int length, int totalvalue_type)
 {
 	float ret_value = 0.0;
 	double *src_data2=NULL;
+    int i=0;
 	if (pData != NULL && length != 0)
 	{
-        if (src_data2 == NULL)
+		src_data2 = (double*)malloc(length *sizeof(double));
+		if (src_data2 == NULL)
 		{
-			src_data2 = (double*)malloc(length *sizeof(double));
-			if (src_data2 == NULL)
-			{
-				LOGD("src_data2 分配内存失败！" );
-                return 0;
-			}
-			memset(src_data2, 0, length*sizeof(double));
+			LOGD("src_data2 分配内存失败！" );
+            return 0;
 		}
-		int i=0;
+		memset(src_data2, 0, length*sizeof(double));
+		
 		for(i=0;i< length;i++)
 		{
 			src_data2[i] =(double) pData[i];

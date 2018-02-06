@@ -882,27 +882,6 @@ bool get_rotation_sample_status()//得到转速采集状态 OK
 		return false;
 }
 
-int enable_fram_write(bool flag)//使能fram写
-{
-	LOGD("xin:===enable_fram_write");
-	unsigned int data = sread(0x44);
-	if(flag)
-	{
-		data |= 0x1<<11;
-	}
-	else
-	{
-		data &=(~((unsigned int)(0x1<<11)));
-	}
-	swrite(0x44, data);
-	sread(0x44);
-	LOGD("fram test");
-	sread(0xf000);
-	swrite(0xf000, 200);
-	sread(0xf000);
-	return data;	
-}
-
 //////////////Analog_FIFO_Status_REG 0x0048
 int get_analog_fifo_byte()//得到模拟fifo中的字节数 0K
 {
@@ -920,7 +899,7 @@ void poweron_spi()//SPI POWER ON
         GpioSet(FPGA_1V2_CTR, GPIO_SET_ON);
         GpioSet(FPGA_2V5_CTR, GPIO_SET_ON);
         usleep(130000);
-        LOGD("xin:===poweron_spi设备上电正常");
+        LOGD("xin:===poweron_spi设备上电结束");
     } 
 }
 
@@ -1044,95 +1023,6 @@ int set_singleCH_vibrate_reg(int ch, int signalType, float maxFreq, float minFre
 		sread(0x8);
 	}
 
-	if(ch == CH_A)
-	{
-		if ((sread(0) == -1) || (sread(0x4) == -1))
-	    {
-	        return -1;
-	    }
-
-		if(signalType == ACC_TYPE) //0：加速度，1：速度，2：位移
-		{
-		    LOGD("xin:=== signalType == 0, ACC");
-		    if (enable_CH_A(true) == -1)//使能CHA
-	        {
-	            return -1;
-	        }
-
-	        if(minFreq < FREQ_7) //小于7Hz以下建议用DC耦合，大于等于7HZ 用AC耦合
-			{
-				LOGD("xin:=== minFreq <7HZ, DC");
-				set_couple_mode(CHA, DC);//耦合方式DC
-			}else{
-				LOGD("xin:=== minFreq >=7HZ, AC");
-				//set_couple_mode(CHA, AC);//耦合方式 , 默认AC
-			}
-
-		}else if(signalType == VEL_TYPE) //速度
-		{
-		    LOGD("xin:=== signalType == 1, SPEED");
-	        if(enable_CH_A_integrate(true)== -1)//使能CHB的积分
-	        {
-	            return -1;
-	        }
-
-			set_integrate(CHA, SPEED);//设置积分选择, 速度
-			if(minFreq < FREQ_10) //小于10Hz以下建议用DC耦合，大于等于10HZ 用AC耦合
-			{
-				LOGD("xin:=== minFreq <10HZ, DC");
-				set_couple_mode(CHA, DC);//耦合方式DC
-			}else{
-				LOGD("xin:=== minFreq >=10HZ, AC");
-				//set_couple_mode(CHA, AC);//耦合方式 , 默认AC
-			}
-		}else if(signalType == DSP_TYPE) //位移
-		{
-			LOGD("xin:=== signalType == 2, SHIFT");
-	        if(enable_CH_A_integrate(true) == -1) //使能CHB的积分
-	        {
-	            return -1;
-	        }
-
-			//set_integrate(CHA, SHIFT);//设置积分选择, 默认为位移
-			if(minFreq < FREQ_10) //小于10Hz以下建议用DC耦合，大于等于10HZ 用AC耦合
-			{
-				LOGD("xin:=== minFreq <10HZ, DC");
-				set_couple_mode(CHA, DC);//耦合方式DC
-			}else{
-				LOGD("xin:=== minFreq >=10HZ, AC");
-				//set_couple_mode(CHA, AC);//耦合方式 , 默认AC
-			}
-		}
-
-		if ((sread(0) == -1) || (sread(0x4) == -1))
-	    {
-	        return -1;
-	    }
-		set_sample_rate((int)maxFreq*2.56); //设置采样频率（包括设置ADC CLK，ADC_MODE）
-	    if ((sread(0) == -1) || (sread(0x4) == -1))
-	    {
-	        return -1;
-	    }
-
-	    if (version_mode == TEST_MODE)  ////如果为1表示内部  测试版本
-	    {
-	        LOGD("xin:=== version_mode = 1 表示测试版本，无24V激励");
-	         //set_24V(CHA, true);//设置24v电源的开关激励, 默认不开启，最终版本是要设为 true
-	    }else{//正式版本为0，最终版本要打开,且adc数据提取要特别处理
-	        LOGD("xin:=== version_mode = 0 表示正式版本，有24V激励");
-	        set_24V(CHA, true);//设置24v电源的开关激励, 默认不开启，最终版本是要设为 true
-	    }
-
-	    if(rangeMode == 0)
-	        set_voltage_range(CHA, V25);//设置电压量程, 默认V25, 可选有V25, V2P5, V0P25
-	    else if (rangeMode == 1)
-	        set_voltage_range(CHA, V2P5);
-	    else if (rangeMode == 2)
-	        set_voltage_range(CHA, V0P25);
-
-	    sread(0);
-		sread(0x4);
-	}
 		
     LOGD("xin:=== set_singleCH_vibrate_reg==========end [%s]", log_time());
 	return 0;

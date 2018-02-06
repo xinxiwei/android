@@ -373,15 +373,15 @@ static fir_filter_item_t* get_filter_item_by_up_freq(uint32_t up_freq)
     uint8_t index = 0;
     switch (up_freq)
     {
-        case 500: index = FIR_F500; break;
-        case 1000: index = FIR_F1000; break;
-        case 2000: index = FIR_F2000; break;
-		case 2500: index = FIR_F2500; break;
-		case 4000: index = FIR_F4000; break;
-        case 5000: index = FIR_F5000; break;
-        case 10000: index = FIR_F10000; break;
-		case 20000: index = FIR_F20000; break;
-		case 40000: index = FIR_F40000; break;
+        case UPPER_FRE_500: index = FIR_F500; break;
+        case UPPER_FRE_1000: index = FIR_F1000; break;
+        case UPPER_FRE_2000: index = FIR_F2000; break;
+		case UPPER_FRE_2500: index = FIR_F2500; break;
+		case UPPER_FRE_4000: index = FIR_F4000; break;
+        case UPPER_FRE_5000: index = FIR_F5000; break;
+        case UPPER_FRE_10000: index = FIR_F10000; break;
+		case UPPER_FRE_20000: index = FIR_F20000; break;
+		case UPPER_FRE_40000: index = FIR_F40000; break;
         default: return NULL;
     }
     return &fir_items[index];
@@ -537,16 +537,13 @@ void  enter_fir_filter(float *src_data, int length,  int up_freq)
 	pfir_filter =  get_filter_item_by_up_freq(up_freq);//根据上限频率获取对应的滤波器
 
 	float *pdst = NULL;
+	pdst = (float *)malloc((length/2)*sizeof(float));
 	if(pdst == NULL)
 	{
-		pdst = (float *)malloc((length/2)*sizeof(float));
-		if(pdst == NULL)
-		{
-			LOGD("pdst 分配内存失败！");
-			return;
-		}
-		memset(pdst, 0, (length/2)*sizeof(float));
+		LOGD("pdst 分配内存失败！");
+		return;
 	}
+	memset(pdst, 0, (length/2)*sizeof(float));
 
     int i = 0;
 	for(i = 0; i < pfir_filter->stage_number; i++) //循环多少级档位

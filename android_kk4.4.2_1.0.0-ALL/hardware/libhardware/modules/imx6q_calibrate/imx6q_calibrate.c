@@ -316,16 +316,13 @@ void *vibrate_calib_thread(void* arg) //振动校准线程
             
     //分配需要的内存
     float *calib_CH1_smp_buf = NULL; //振动校准  通道1 采集数据
+    calib_CH1_smp_buf =(float*)malloc(g_smpLength * sizeof(float));
     if(calib_CH1_smp_buf == NULL)
     {
-        calib_CH1_smp_buf =(float*)malloc(g_smpLength * sizeof(float));
-        if(calib_CH1_smp_buf == NULL)
-        {
-            LOGD("calib_CH1_smp_buf 分配内存失败！");
-            exit(EXIT_FAILURE);		
-        }
-        memset(calib_CH1_smp_buf, 0, g_smpLength*sizeof(float)); 
-    }  	
+        LOGD("calib_CH1_smp_buf 分配内存失败！");
+        exit(EXIT_FAILURE);		
+    }
+    memset(calib_CH1_smp_buf, 0, g_smpLength*sizeof(float)); 
     
     sem_wait(&run_sem);//等待信号量	
         

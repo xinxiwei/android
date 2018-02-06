@@ -193,42 +193,41 @@ extern float S8_F100_ForwardCoeffs[S0_F20_FORWARDCOEFFS_NUM];
 
 /* fir滤波之后的无效点数 */
 // iir:  0.16 1 2 5 10 20 50 100  //下限频率
-// fir: 500 1000 2000 2500 4000 5000 10000 20000 40000 //上限频率
+// fir:  500  1000 2000 2500 4000 5000 10000 20000 40000 //上限频率
 static int invalid_num_table[NUM_SAMPLERATES][NUM_LOWER_FRE] ={//9 8
-  {6.9E+5, 1.1E+5, 51200, 20480, 10240, 12288, 4096, 3072},  //102.4   上限40000
-  {348160, 56320, 25600, 10240, 7680, 5120, 3072, 1024},     //51.2    上限20000
-  {174080, 28160, 12800, 10240, 5120, 3072, 1024, 512},      //25.6    上限10000
-  {87040, 14080, 6400, 7168, 2560, 1792, 512, 256},          //12.8    上限5000
-  {69632, 11264, 10240, 5120, 3072, 1228, 307, 307},         //10.24   上限4000
-  {43520, 7040, 6400, 3200, 1280, 768, 256, 128},            //6.4     上限2500
-  {34816, 5632, 5120, 2560, 1024, 614, 307, 102},            //5.12    上限2000
-  {17408, 2816, 2560, 1280, 640, 307, 128, 77},              //2.56    上限1000
   {8704, 1408, 1536, 768, 358, 179, 77, 38},                 //1.28    上限500
+  {17408, 2816, 2560, 1280, 640, 307, 128, 77},              //2.56    上限1000
+  {34816, 5632, 5120, 2560, 1024, 614, 307, 102},            //5.12    上限2000
+  {43520, 7040, 6400, 3200, 1280, 768, 256, 128},            //6.4     上限2500
+  {69632, 11264, 10240, 5120, 3072, 1228, 307, 307},         //10.24   上限4000
+  {87040, 14080, 6400, 7168, 2560, 1792, 512, 256},          //12.8    上限5000
+  {174080, 28160, 12800, 10240, 5120, 3072, 1024, 512},      //25.6    上限10000
+  {348160, 56320, 25600, 10240, 7680, 5120, 3072, 1024},     //51.2    上限20000
+  {6.9E+5, 1.1E+5, 51200, 20480, 10240, 12288, 4096, 3072},  //102.4   上限40000
 };
 
-
 //从table表中获取无效点数
-static int get_invalid_num_from_table(int* table,  int  iir_frq){
+static int get_invalid_num_from_table(int* table,  int  lw_freq){
     if(table == NULL)
     {
         return 0;
     }
-    switch(iir_frq){
-	    case 0:{
+    switch(lw_freq){
+	    case LOWER_FRE_0_16:{
             return table[IIR_F016];
-	    }case 1:{
+	    }case LOWER_FRE_1:{
             return table[IIR_F1];
-        }case 2:{
+        }case LOWER_FRE_2:{
             return table[IIR_F2];
-        }case 5:{
+        }case LOWER_FRE_5:{
             return table[IIR_F5];
-        }case 10:{
+        }case LOWER_FRE_10:{
             return table[IIR_F10];
-        }case 20:{
+        }case LOWER_FRE_20:{
             return table[IIR_F20];
-        }case 50:{
+        }case LOWER_FRE_50:{
             return table[IIR_F50];
-        }case 100:{
+        }case LOWER_FRE_100:{
             return table[IIR_F100];
         }default:{
             return 0;
@@ -237,49 +236,49 @@ static int get_invalid_num_from_table(int* table,  int  iir_frq){
 }
 
 /* 功能描述：得到无效点数 */
-int get_invalid_num(int Upper_frq,  int Lower_frq)
+int get_invalid_num(int up_freq,  int lw_freq)
 {
-    switch(Upper_frq)
+    switch(up_freq)
     {
-        case 500:
+        case UPPER_FRE_500:
             {
-                return get_invalid_num_from_table(&invalid_num_table[8][0], Lower_frq);
+                return get_invalid_num_from_table(&invalid_num_table[0][0], lw_freq);
             }
-        case 1000:
+        case UPPER_FRE_1000:
             {
-                return get_invalid_num_from_table(&invalid_num_table[7][0], Lower_frq);
+                return get_invalid_num_from_table(&invalid_num_table[1][0], lw_freq);
             }
-        case 2000:
+        case UPPER_FRE_2000:
             {
-                return get_invalid_num_from_table(&invalid_num_table[6][0], Lower_frq);
+                return get_invalid_num_from_table(&invalid_num_table[2][0], lw_freq);
             }
-        case 2500:
+        case UPPER_FRE_2500:
             {
-                return get_invalid_num_from_table(&invalid_num_table[5][0], Lower_frq);
+                return get_invalid_num_from_table(&invalid_num_table[3][0], lw_freq);
             }
-        case 4000:
+        case UPPER_FRE_4000:
             {
-                return get_invalid_num_from_table(&invalid_num_table[4][0], Lower_frq);
+                return get_invalid_num_from_table(&invalid_num_table[4][0], lw_freq);
             }
-        case 5000:
+        case UPPER_FRE_5000:
             {
-                return get_invalid_num_from_table(&invalid_num_table[3][0], Lower_frq);
+                return get_invalid_num_from_table(&invalid_num_table[5][0], lw_freq);
             }
-        case 10000:
+        case UPPER_FRE_10000:
             {
-                return get_invalid_num_from_table(&invalid_num_table[2][0], Lower_frq);
+                return get_invalid_num_from_table(&invalid_num_table[6][0], lw_freq);
             }
-        case 20000:
+        case UPPER_FRE_20000:
             {
-                return get_invalid_num_from_table(&invalid_num_table[1][0], Lower_frq);
+                return get_invalid_num_from_table(&invalid_num_table[7][0], lw_freq);
             }
-        case 40000:
+        case UPPER_FRE_40000:
             {
-                return get_invalid_num_from_table(&invalid_num_table[0][0], Lower_frq);
+                return get_invalid_num_from_table(&invalid_num_table[8][0], lw_freq);
             }
         default:
             {
-                return get_invalid_num_from_table(&invalid_num_table[0][0], Lower_frq);
+                return 0;
             }
     }
 }
@@ -293,13 +292,13 @@ static tIIRFilter iir_filters_table[NUM_SAMPLERATES][NUM_LOWER_FRE];
 *     Parameter:   			 u16Upper
 *
 **************************************************************************************/
-static int get_smp_rate(int u16Upper)  // 输入上限，输出采样率
+static int get_smp_rate(int up_freq)  // 输入上限，输出采样率
 {
-    if(UPPER_FRE_500 == u16Upper || UPPER_FRE_1000 == u16Upper || UPPER_FRE_2000 == u16Upper
-        || UPPER_FRE_2500 == u16Upper || UPPER_FRE_4000  == u16Upper || UPPER_FRE_5000 == u16Upper
-		|| UPPER_FRE_10000 == u16Upper|| UPPER_FRE_20000 == u16Upper || UPPER_FRE_40000 == u16Upper)
+    if(UPPER_FRE_500 == up_freq || UPPER_FRE_1000 == up_freq || UPPER_FRE_2000 == up_freq
+        || UPPER_FRE_2500 == up_freq || UPPER_FRE_4000  == up_freq || UPPER_FRE_5000 == up_freq
+		|| UPPER_FRE_10000 == up_freq|| UPPER_FRE_20000 == up_freq || UPPER_FRE_40000 == up_freq)
     {
-        return (2.56*u16Upper);
+        return (2.56*up_freq);
     }
     else
     {
@@ -313,12 +312,12 @@ static int get_smp_rate(int u16Upper)  // 输入上限，输出采样率
 *     Parameter:   			 float* data,  int len, float* rev_coeffs,
 **************************************************************************************/
 //通过FIR低通滤波器的截止频率获取降采样后的采样率
-static tPIIRFilter get_iir_filter(int SRID,  int FCID) //输入采样率 ，下限
+static tPIIRFilter get_iir_filter(int samprate,  int lw_freq) //输入采样率 ，下限
 {
     int index_sr = 0;
     int index_fc = 0;
 
-    switch( SRID ) //采样率
+    switch( samprate ) //采样率
     {
         case SAMPLE_FRE_102400:
         {
@@ -371,7 +370,7 @@ static tPIIRFilter get_iir_filter(int SRID,  int FCID) //输入采样率 ，下�
         }
     }
 
-    switch( FCID )//下限频率
+    switch( lw_freq )//下限频率
     {
         case LOWER_FRE_0_16:
         {
@@ -790,7 +789,7 @@ static void cascade_iir_filter(float*   data,
         int double_loop = loop<<1;
         a[1] = rev_coeffs[double_loop];
         a[2] = rev_coeffs[1+double_loop];
-        LOGD("b[0] = %E, b[1] = %E, b[2] = %E, a[1] = %E, a[2] = %E",  b[0],b[1],b[2],a[1],a[2]);
+        //LOGD("b[0] = %E, b[1] = %E, b[2] = %E, a[1] = %E, a[2] = %E",  b[0],b[1],b[2],a[1],a[2]);
 		//正向系数023，反向系数01
 		//正向系数345，反射系数23
         for(index = 0; index < len; index++)
@@ -903,16 +902,13 @@ void  enter_iir_filter(float *src_data, int length,  int up_freq,  int lw_freq)
 	pIIRFilter = get_iir_filter(get_smp_rate(up_freq),  lw_freq);//通过上下限，获取滤波系数
 
 	float *state_para = NULL;
-	if (state_para ==  NULL)
+	state_para = (float*)malloc(pIIRFilter->numForCoeffs <<2);//正向系数个数
+	if(state_para == NULL)
 	{
-		state_para = (float*)malloc(pIIRFilter->numForCoeffs <<2);//正向系数个数
-		if(state_para == NULL)
-		{
-			LOGD("state_para 分配内存失败！");
-			return;
-		}
-		memset(state_para,  0,  sizeof(float)* pIIRFilter->numForCoeffs);
+		LOGD("state_para 分配内存失败！");
+		return;
 	}
+	memset(state_para,  0,  sizeof(float)* pIIRFilter->numForCoeffs);
 
 	cascade_iir_filter(src_data, length,  pIIRFilter->pfltRevCoeffs, pIIRFilter->pfltForCoeffs, pIIRFilter->numRevCoeffs, pIIRFilter->numForCoeffs, state_para, 1.0);
 

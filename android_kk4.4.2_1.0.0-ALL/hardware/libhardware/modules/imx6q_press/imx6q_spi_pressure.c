@@ -292,16 +292,13 @@ int get_period_point( float* p_pfftData ) //通过傅立叶得到周期内的点
    float tmp_data =0.0;
    int period_point = 0;  //每个周期对应的多少个点数
    float *p_backupFftData = NULL;
-   if( p_backupFftData == NULL)
+   p_backupFftData =( float * )malloc(  ((data_length/2)+1) * sizeof( float ) ); //只取前半部分数据计算
+   if( p_backupFftData == NULL )
    {
-	   p_backupFftData =( float * )malloc(  ((data_length/2)+1) * sizeof( float ) ); //只取前半部分数据计算
-	   if( p_backupFftData == NULL )
-	   {
-			LOGD( "p_backupFftData 分配内存失败！" );
-			return 0;
-	   }
-	   memset( p_backupFftData ,  0 ,  ((data_length/2)+1)*sizeof( float ));
+		LOGD( "p_backupFftData 分配内存失败！" );
+		return 0;
    }
+   memset( p_backupFftData ,  0 ,  ((data_length/2)+1)*sizeof( float ));
    memcpy( &p_backupFftData[1] ,  p_pfftData ,  (data_length/2) *sizeof(float) ); //备份一份FFT变换后的数据
 
 #if 0 //冒泡排序, 比较耗时
@@ -713,40 +710,31 @@ float* fft_func( float* psrc )
         return NULL;
     }
 	float *p_imagData = NULL;
-	if( p_imagData == NULL)
+	p_imagData =( float * )malloc( data_length *sizeof( float ) );
+	if( p_imagData == NULL )
 	{
-		p_imagData =( float * )malloc( data_length *sizeof( float ) );
-		if( p_imagData == NULL )
-		{
-			LOGD( "mImagData分配内存失败！" );
-			return NULL;
-		}
-		memset( p_imagData , 0 , sizeof( float )* data_length );
+		LOGD( "mImagData分配内存失败！" );
+		return NULL;
 	}
+	memset( p_imagData , 0 , sizeof( float )* data_length );
 
 	float *p_fftCoeffs = NULL;
-    if( p_fftCoeffs == NULL)
+	p_fftCoeffs =( float * )malloc( data_length *sizeof( float ) );
+	if( p_fftCoeffs == NULL )
 	{
-		p_fftCoeffs =( float * )malloc( data_length *sizeof( float ) );
-		if( p_fftCoeffs == NULL )
-		{
-			LOGD( "pFFTCoeffs分配内存失败！" );
-			return NULL;
-		}
-		memset( p_fftCoeffs , 0 , sizeof( float )* data_length );
+		LOGD( "pFFTCoeffs分配内存失败！" );
+		return NULL;
 	}
+	memset( p_fftCoeffs , 0 , sizeof( float )* data_length );
 
 	long  *p_bitReverseAddressTable = NULL;
-	if( p_bitReverseAddressTable == NULL)
+	p_bitReverseAddressTable =( long * )malloc( data_length*sizeof( long ) );
+	if( p_bitReverseAddressTable == NULL )
 	{
-		p_bitReverseAddressTable =( long * )malloc( data_length*sizeof( long ) );
-		if( p_bitReverseAddressTable == NULL )
-		{
-			LOGD( "pBitReverseAddressTable分配内存失败！" );
-			return NULL;
-		}
-		memset( p_bitReverseAddressTable , 0 , sizeof( long )* data_length );
+		LOGD( "pBitReverseAddressTable分配内存失败！" );
+		return NULL;
 	}
+	memset( p_bitReverseAddressTable , 0 , sizeof( long )* data_length );
 
 	sif_fft( p_fftCoeffs ,  p_bitReverseAddressTable ,  data_length );    //FFT 计算
 	sda_rfft( psrc ,  p_imagData  , p_fftCoeffs ,  p_bitReverseAddressTable ,  data_length ,  Log2Size );
@@ -797,16 +785,13 @@ void  press_alg_entry( float* p_buf ,  int length , float* p_retValue )
 	Log2Size =( long )log2( data_length );	// 计算对数
 
 	float *buf_src_back = NULL; //备份一份原始数据，因为FFT算法会更改原始数据值
-	if( buf_src_back == NULL)
+	buf_src_back =( float * )malloc( data_length *sizeof( float ) );
+	if( buf_src_back == NULL )
 	{
-		buf_src_back =( float * )malloc( data_length *sizeof( float ) );
-		if( buf_src_back == NULL )
-		{
-			LOGD( "mImagData分配内存失败！" );
-			return;
-		}
-		memset( buf_src_back , 0 , data_length * sizeof( float ) );
+		LOGD( "mImagData分配内存失败！" );
+		return;
 	}
+	memset( buf_src_back , 0 , data_length * sizeof( float ) );
 	memcpy( buf_src_back ,  p_buf ,  data_length*sizeof( float ) );
 
     get_max_min( buf_src_back , p_retValue ,  get_period_point( fft_func( p_buf )) );

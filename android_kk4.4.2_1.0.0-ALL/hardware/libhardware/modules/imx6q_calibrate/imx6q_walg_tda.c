@@ -34,7 +34,7 @@ double WALG_TDA_DCValue(const double *pTimeWave, const int length)//信号的直
 {
  	register int i = 0;
  	double sum = 0.0;
-    if(pTimeWave == NULL || length == 0)
+    if (pTimeWave == NULL || length == 0)
     {
         return 0;
     }
@@ -57,7 +57,7 @@ double WALG_TDA_RMSValue(const double *pTimeWave, const int length) //计算得�
 	register int i = 0;
 	double sum = 0;
 	double temp = 0.0, dc = 0.0;
-    if(pTimeWave == NULL || length == 0)
+    if (pTimeWave == NULL || length == 0)
     {
         return 0;
     }
@@ -65,7 +65,7 @@ double WALG_TDA_RMSValue(const double *pTimeWave, const int length) //计算得�
 	dc = WALG_TDA_DCValue(pTimeWave, length);
 
 	//求取有效值
-	for(i=0; i<length; i++)
+	for (i=0; i<length; i++)
 	{
 		temp = pTimeWave[i]-dc;
 		sum += temp*temp;
@@ -83,12 +83,12 @@ double WALG_TDA_RMSRealValue(const double *pTimeWave, const int length)
 {
 	register int i = 0;
 	double sum = 0.0;
-    if(pTimeWave == NULL || length == 0)
+    if (pTimeWave == NULL || length == 0)
     {
         return 0;
     }
 	//求取有效值
-	for(i=0; i<length; i++)
+	for (i=0; i<length; i++)
 	{
 		sum += pTimeWave[i]*pTimeWave[i];
 	}
@@ -110,7 +110,7 @@ double WALG_TDA_Skew(const double *pTimeWave, const int length) //计算得到�
         double sum   = 0.0;
         int i=0;
 
-        for(i=0; i<length; i++)
+        for (i=0; i<length; i++)
         {
             dbMid = (pTimeWave[i]-dbAbsMean);
             sum += dbMid*dbMid*dbMid;
@@ -122,7 +122,7 @@ double WALG_TDA_Skew(const double *pTimeWave, const int length) //计算得到�
         double dbRMS_Pwr3 = 0.0;
         double dbMid  = 0.0;
         double dbKurtosis = 0.0;
-        if(pTimeWave == NULL || length == 0)
+        if (pTimeWave == NULL || length == 0)
         {
             return 0;
         }
@@ -161,12 +161,12 @@ double WALG_TDA_SqrRootValue(const double *pTimeWave, const int length) //计算
 {
 	register int i = 0;
 	double sum = 0.0;
-	if(pTimeWave == NULL || length == 0)
+	if (pTimeWave == NULL || length == 0)
     {
         return 0;
     }
 	//求取有效值
-	for(i=0; i<length; i++)
+	for (i=0; i<length; i++)
 	{
 		sum += sqrt(fabs(pTimeWave[i]));
 	}
@@ -182,14 +182,14 @@ double WALG_TDA_Max(const double *pData, const int length) //时域信号的最�
 {
 	register int i = 0;
 	double max = 0.0;
-    if(pData == NULL)
+    if (pData == NULL)
     {
         return 0;
     }
 	max = pData[0];
-	for(i=1; i<length; i++)
+	for (i=1; i<length; i++)
 	{
-		if(max < pData[i])
+		if (max < pData[i])
 			max = pData[i];
 	}
 	return max;
@@ -204,14 +204,14 @@ double WALG_TDA_Min(const double *pData, const int length) //时域信号的最�
 {
 	register int i = 0;
 	double min=0.0;
-    if(pData == NULL)
+    if (pData == NULL)
     {
         return 0;
     }
 	min = pData[0];
-	for(i=1; i<length; i++)
+	for (i=1; i<length; i++)
 	{
-		if(min > pData[i])
+		if (min > pData[i])
 			min = pData[i];
 	}
 	return min;
@@ -229,7 +229,7 @@ double WALG_TDA_CrestFactor(const double *pTimeWave, const int length) //计算�
 	/*S1:变量申明*/
 	double dbMax = 0.0;  //←真峰值
 	double dbRMS = 0.0;  //←有效值
-    if(pTimeWave == NULL || length == 0)
+    if (pTimeWave == NULL || length == 0)
     {
         return 0;
     }
@@ -261,7 +261,7 @@ double WALG_TDA_Kurtosis(const double *pTimeWave, const int length) //计算得�
 	double dbRMS_Pwr4 = 0.0;
 	double dbMid  = 0.0;
 	double dbKurtosis = 0.0;
-    if(pTimeWave == NULL || length == 0)
+    if (pTimeWave == NULL || length == 0)
     {
         return 0;
     }
@@ -299,11 +299,11 @@ double WALG_TDA_AbsDCValue(const double *pTimeWave, const int length)// 平均�
 {
 	register int i = 0;
 	double sum = 0.0;
-	if(pTimeWave == NULL || length == 0)
+	if (pTimeWave == NULL || length == 0)
     {
         return 0;
     }
-	for(i=0; i<length; i++)
+	for (i=0; i<length; i++)
 	{
 		sum += fabs(pTimeWave[i]);
 	}
@@ -318,7 +318,7 @@ double WALG_TDA_AbsDCValue(const double *pTimeWave, const int length)// 平均�
 //return		- 计算得到的信号波形指标
 double WALG_TDA_ShapeFactor(const double *pTimeWave, const int length) //计算得到的信号波形指标
 {
-    if(pTimeWave == NULL || length == 0)
+    if (pTimeWave == NULL || length == 0)
     {
         return 0;
     }
@@ -339,7 +339,7 @@ double WALG_TDA_ShapeFactor(const double *pTimeWave, const int length) //计算�
 //return		- 计算得到的信号脉冲指标
 double WALG_TDA_ImpulseFactor(const double *pTimeWave, const int length) //计算得到的信号脉冲指标
 {
-    if(pTimeWave == NULL || length == 0)
+    if (pTimeWave == NULL || length == 0)
     {
         return 0;
     }
@@ -360,7 +360,7 @@ double WALG_TDA_ImpulseFactor(const double *pTimeWave, const int length) //计�
 //return		- 计算得到的信号裕度指标
 double WALG_TDA_ClearanceFactor(const double *pTimeWave, const int length) //计算得到的信号裕度指标
 {
-    if(pTimeWave == NULL || length == 0)
+    if (pTimeWave == NULL || length == 0)
     {
         return 0;
     }
@@ -381,7 +381,7 @@ double WALG_TDA_ClearanceFactor(const double *pTimeWave, const int length) //计
 double WALG_TDA_TruePeakToPeakValue(const double *pData, const int length) //真峰峰值
 {
 	double max = 0.0, min = 0.0;
-    if(pData == NULL || length == 0)
+    if (pData == NULL || length == 0)
     {
         return 0;
     }
@@ -396,7 +396,7 @@ double WALG_TDA_TruePeakToPeakValue(const double *pData, const int length) //真
 //返回，真峰值
 double WALG_TDA_TruePeakValue(const double *pData, const int length)
 {
-    if(pData == NULL || length == 0)
+    if (pData == NULL || length == 0)
     {
         return 0;
     }
@@ -409,14 +409,14 @@ double WALG_TDA_Variance(const double *pSrc, const int length)  //方差
 	double dc = 0.0;
 	double sum = 0.0;
 	int i;
-    if(pSrc == NULL || length == 0)
+    if (pSrc == NULL || length == 0)
     {
         return 0;
     }
 	dc = WALG_TDA_DCValue(pSrc, length);
 
 	//sum = 0;
-	for(i=0; i<length; i++)
+	for (i=0; i<length; i++)
 	{
 		sum += (pSrc[i]-dc) *(pSrc[i]-dc);
 	}
@@ -435,7 +435,7 @@ double WALG_TDA_PM(const double *pData, const int length)
 {
 	double dbPP = 0.0;
 	double dbMean = 0.0;
-    if(pData == NULL || length == 0)
+    if (pData == NULL || length == 0)
     {
         return 0;
     }

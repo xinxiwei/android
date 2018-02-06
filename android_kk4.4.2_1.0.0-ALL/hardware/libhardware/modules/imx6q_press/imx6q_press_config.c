@@ -912,7 +912,7 @@ void poweron_spi(  )//SPI POWER ON
         GpioSet(FPGA_1V2_CTR, GPIO_SET_ON);
         GpioSet(FPGA_2V5_CTR, GPIO_SET_ON);
         usleep(130000);
-        LOGD("xin:===poweron_spi设备上电正常");
+        LOGD("xin:===poweron_spi设备上电结束");
     } 
 }
 
